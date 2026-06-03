@@ -22,6 +22,29 @@ type NodeData = {
   available?: boolean;
 };
 
+type SnapshotCard = {
+  id: string;
+  name: string;
+  shortName: string;
+  imageUrl?: string;
+};
+
+type SnapshotNodeData = {
+  title: string;
+  subtitle?: string;
+  snapshotIndex: number;
+  active?: boolean;
+  deckCount: number;
+  extraDeckCount: number;
+  zones: {
+    hand: SnapshotCard[];
+    field: SnapshotCard[];
+    graveyard: SnapshotCard[];
+    banished: SnapshotCard[];
+  };
+  onSelectCard?: (cardId: string) => void;
+};
+
 function BaseNode({
   data,
   borderColor,
@@ -133,9 +156,98 @@ export function WildcardNode({ data }: NodeProps) {
   return <BaseNode data={data as NodeData} borderColor="#64748b" background="#f1f5f9" />;
 }
 
+function SnapshotCardButton({
+  card,
+  variant,
+  onSelect,
+}: {
+  card: SnapshotCard;
+  variant: "image" | "chip";
+  onSelect?: (cardId: string) => void;
+}) {
+  return (
+    <button
+      className={variant === "image" ? "snapshot-field-card nodrag nopan" : "snapshot-field-chip nodrag nopan"}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect?.(card.id);
+      }}
+      title={card.name}
+    >
+      {variant === "image" && card.imageUrl ? <img src={card.imageUrl} alt={card.name} /> : card.shortName}
+    </button>
+  );
+}
+
+function SnapshotStack({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="snapshot-stack">
+      <div className="snapshot-card-back" />
+      <strong>{label}</strong>
+      <span>{count}</span>
+    </div>
+  );
+}
+
+export function SnapshotNode({ data }: NodeProps) {
+  const typedData = data as SnapshotNodeData;
+  const fieldCards = typedData.zones.field.slice(0, 5);
+  const zoneList = [
+    { key: "hand", label: "Hand", cards: typedData.zones.hand },
+    { key: "graveyard", label: "GY", cards: typedData.zones.graveyard },
+    { key: "banished", label: "Banish", cards: typedData.zones.banished },
+  ];
+
+  return (
+    <div className={`snapshot-node ${typedData.active ? "snapshot-node-active" : ""}`}>
+      <Handle type="target" position={Position.Left} />
+      <div className="snapshot-node-header">
+        <strong>{typedData.title}</strong>
+        <span>{typedData.subtitle}</span>
+      </div>
+
+      <div className="snapshot-board-main">
+        <SnapshotStack label="Deck" count={typedData.deckCount} />
+        <div className="snapshot-field">
+          <span>Field</span>
+          <div className="snapshot-field-slots">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="snapshot-field-slot">
+                {fieldCards[index] ? (
+                  <SnapshotCardButton card={fieldCards[index]} variant="image" onSelect={typedData.onSelectCard} />
+                ) : (
+                  <span className="snapshot-empty-slot" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        <SnapshotStack label="Extra" count={typedData.extraDeckCount} />
+      </div>
+
+      <div className="snapshot-zones">
+        {zoneList.map((zone) => (
+          <div key={zone.key} className="snapshot-zone">
+            <span>
+              {zone.label} {zone.cards.length}
+            </span>
+            <div>
+              {zone.cards.map((card) => (
+                <SnapshotCardButton key={card.id} card={card} variant="chip" onSelect={typedData.onSelectCard} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
 export const nodeTypes = {
   card: CardNode,
   action: ActionNode,
   condition: ConditionNode,
   wildcard: WildcardNode,
+  snapshot: SnapshotNode,
 };

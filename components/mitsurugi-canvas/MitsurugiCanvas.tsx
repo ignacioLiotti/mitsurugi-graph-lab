@@ -22,7 +22,9 @@ import {
   actionTargets,
   applyPlaygroundAction,
   buildPlaygroundGraph,
+  buildPlaygroundTimelineGraph,
   createInitialPlaygroundState,
+  PlaygroundSnapshot,
   PlaygroundStep,
 } from "./playgroundEngine";
 import {
@@ -60,12 +62,6 @@ const nodeLegend = [
   { label: "Target", className: "legend-wildcard" },
 ];
 
-type FieldSnapshot = {
-  id: string;
-  label: string;
-  state: GameState;
-};
-
 const timelineZones: { key: ConcreteZone; label: string }[] = [
   { key: "hand", label: "Hand" },
   { key: "field", label: "Field" },
@@ -79,6 +75,7 @@ export default function MitsurugiCanvas() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>("habakiri");
   const [mode, setMode] = useState<GraphMode>("expanded");
+  const [playgroundCanvasView, setPlaygroundCanvasView] = useState<"timeline" | "decisions">("timeline");
   const [includeConditions, setIncludeConditions] = useState(true);
   const [query, setQuery] = useState("");
   const [selectedCardInfo, setSelectedCardInfo] = useState<YgoCardInfo | null>(null);
@@ -86,7 +83,7 @@ export default function MitsurugiCanvas() {
   const [playgroundHand, setPlaygroundHand] = useState<string[]>(["habakiri", "prayers"]);
   const [playgroundState, setPlaygroundState] = useState(() => createInitialPlaygroundState(cards, ["habakiri", "prayers"]));
   const [playgroundSteps, setPlaygroundSteps] = useState<PlaygroundStep[]>([]);
-  const [fieldSnapshots, setFieldSnapshots] = useState<FieldSnapshot[]>(() => [
+  const [fieldSnapshots, setFieldSnapshots] = useState<PlaygroundSnapshot[]>(() => [
     {
       id: "snapshot-0",
       label: "Initial hand",
@@ -123,11 +120,26 @@ export default function MitsurugiCanvas() {
 
   const graph = useMemo(() => {
     if (appMode === "playground") {
+      if (playgroundCanvasView === "timeline") {
+        return buildPlaygroundTimelineGraph(cards, fieldSnapshots, activeSnapshotIndex, setSelectedPlaygroundCardId);
+      }
+
       return buildPlaygroundGraph(cards, playgroundHand, playgroundSteps);
     }
 
     return buildGraph(cards, selectedCardId, mode, includeConditions, gameState);
-  }, [appMode, selectedCardId, mode, includeConditions, gameState, playgroundHand, playgroundSteps]);
+  }, [
+    appMode,
+    selectedCardId,
+    mode,
+    includeConditions,
+    gameState,
+    playgroundCanvasView,
+    fieldSnapshots,
+    activeSnapshotIndex,
+    playgroundHand,
+    playgroundSteps,
+  ]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
@@ -197,7 +209,7 @@ export default function MitsurugiCanvas() {
 
   const activeSnapshot = fieldSnapshots[Math.min(activeSnapshotIndex, fieldSnapshots.length - 1)];
 
-  function makeInitialSnapshot(state: GameState): FieldSnapshot {
+  function makeInitialSnapshot(state: GameState): PlaygroundSnapshot {
     return {
       id: "snapshot-0",
       label: "Initial hand",
@@ -207,7 +219,7 @@ export default function MitsurugiCanvas() {
 
   function buildSnapshotsFromSteps(initialState: GameState, steps: PlaygroundStep[]) {
     let rollingState = initialState;
-    const snapshots: FieldSnapshot[] = [makeInitialSnapshot(initialState)];
+    const snapshots: PlaygroundSnapshot[] = [makeInitialSnapshot(initialState)];
 
     steps.forEach((step, index) => {
       const sourceCard = cards.find((card) => card.id === step.sourceCardId);
@@ -373,6 +385,12 @@ export default function MitsurugiCanvas() {
   function handleNodeClick(_: React.MouseEvent, node: Node) {
     if (appMode !== "playground") return;
 
+    const snapshotIndex = typeof node.data?.snapshotIndex === "number" ? node.data.snapshotIndex : null;
+    if (snapshotIndex !== null) {
+      setActiveSnapshotIndex(snapshotIndex);
+      return;
+    }
+
     const cardId = typeof node.data?.cardId === "string" ? node.data.cardId : null;
     setSelectedPlaygroundCardId(cardId);
   }
@@ -410,7 +428,7 @@ export default function MitsurugiCanvas() {
     );
   }
 
-  function renderSnapshotBoard(snapshot: FieldSnapshot, compact = false) {
+  function renderSnapshotBoard(snapshot: PlaygroundSnapshot, compact = false) {
     const fieldCards = snapshot.state.field.slice(0, compact ? 3 : 5);
 
     return (
@@ -508,9 +526,27 @@ export default function MitsurugiCanvas() {
           </button>
             </>
           ) : (
-            <button className="secondary-button" onClick={() => resetPlayground()}>
-              Reiniciar simulación
-            </button>
+            <>
+              <div className="field-label">Canvas</div>
+              <div className="segmented">
+                <button
+                  className={playgroundCanvasView === "timeline" ? "active" : ""}
+                  onClick={() => setPlaygroundCanvasView("timeline")}
+                >
+                  Timeline
+                </button>
+                <button
+                  className={playgroundCanvasView === "decisions" ? "active" : ""}
+                  onClick={() => setPlaygroundCanvasView("decisions")}
+                >
+                  Decisions
+                </button>
+              </div>
+
+              <button className="secondary-button" onClick={() => resetPlayground()}>
+                Reiniciar simulación
+              </button>
+            </>
           )}
         </div>
 

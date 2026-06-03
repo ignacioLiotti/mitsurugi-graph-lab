@@ -1,4 +1,4 @@
-import { Edge, Node } from "@xyflow/react";
+import { Edge, MarkerType, Node } from "@xyflow/react";
 import { getCardImageUrl } from "./cardApi";
 import { CardAction, CardData, GameState, TargetFilter, Zone } from "./types";
 
@@ -10,6 +10,12 @@ export type PlaygroundStep = {
   actionId: string;
   targetCardId?: string;
   label: string;
+};
+
+export type PlaygroundSnapshot = {
+  id: string;
+  label: string;
+  state: GameState;
 };
 
 export function createInitialPlaygroundState(cards: CardData[], hand: string[]): GameState {
@@ -188,6 +194,89 @@ export function buildPlaygroundGraph(cards: CardData[], initialHand: string[], s
       },
     });
   }
+
+  return { nodes, edges };
+}
+
+function compactCard(card: CardData) {
+  return {
+    id: card.id,
+    name: card.name,
+    shortName: card.name.replace("Ame no ", "").replace(" no Mitsurugi", ""),
+    imageUrl: getCardImageUrl(card),
+  };
+}
+
+function snapshotCards(cardsById: Map<string, CardData>, cardIds: string[], limit?: number) {
+  return cardIds
+    .slice(0, limit)
+    .map((cardId) => {
+      const card = cardsById.get(cardId);
+      return card ? compactCard(card) : null;
+    })
+    .filter(Boolean);
+}
+
+export function buildPlaygroundTimelineGraph(
+  cards: CardData[],
+  snapshots: PlaygroundSnapshot[],
+  activeSnapshotIndex: number,
+  onSelectCard: (cardId: string) => void,
+) {
+  const cardsById = new Map(cards.map((card) => [card.id, card]));
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+
+  snapshots.forEach((snapshot, index) => {
+    const column = index % 4;
+    const row = Math.floor(index / 4);
+
+    nodes.push({
+      id: `timeline-${snapshot.id}`,
+      type: "snapshot",
+      position: {
+        x: column * 430,
+        y: row * 410 + (column % 2 === 0 ? 0 : 58),
+      },
+      data: {
+        title: `T${index}`,
+        subtitle: snapshot.label,
+        snapshotIndex: index,
+        active: index === activeSnapshotIndex,
+        deckCount: snapshot.state.deck.length,
+        extraDeckCount: snapshot.state.extraDeck.length,
+        zones: {
+          hand: snapshotCards(cardsById, snapshot.state.hand, 7),
+          field: snapshotCards(cardsById, snapshot.state.field, 5),
+          graveyard: snapshotCards(cardsById, snapshot.state.graveyard, 6),
+          banished: snapshotCards(cardsById, snapshot.state.banished, 6),
+        },
+        onSelectCard,
+      },
+    });
+
+    if (index > 0) {
+      edges.push({
+        id: `timeline-${snapshots[index - 1].id}-${snapshot.id}`,
+        source: `timeline-${snapshots[index - 1].id}`,
+        target: `timeline-${snapshot.id}`,
+        label: snapshot.label,
+        animated: true,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: "#8b5cf6",
+        },
+        style: {
+          stroke: "#8b5cf6",
+          strokeWidth: 5,
+        },
+        labelStyle: {
+          fill: "#581c87",
+          fontWeight: 800,
+        },
+      });
+    }
+  });
 
   return { nodes, edges };
 }

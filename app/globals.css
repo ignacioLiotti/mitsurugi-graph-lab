@@ -1364,6 +1364,196 @@ button {
   display: none;
 }
 
+.snapshot-node {
+  width: 360px;
+  overflow: hidden;
+  border: 3px solid #1f2937;
+  border-radius: 8px;
+  background: #f8fafc;
+  box-shadow:
+    0 18px 36px rgba(15, 23, 42, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.snapshot-node-active {
+  border-color: #facc15;
+  box-shadow:
+    0 0 0 5px rgba(250, 204, 21, 0.28),
+    0 24px 46px rgba(15, 23, 42, 0.28);
+}
+
+.snapshot-node-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #111827;
+  color: #f8fafc;
+  padding: 8px 10px;
+}
+
+.snapshot-node-header strong {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.snapshot-node-header span {
+  min-width: 0;
+  overflow: hidden;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snapshot-board-main {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) 50px;
+  gap: 8px;
+  background:
+    linear-gradient(90deg, rgba(129, 140, 248, 0.2), transparent 26%, transparent 74%, rgba(129, 140, 248, 0.2)),
+    #d7b06a;
+  padding: 10px;
+}
+
+.snapshot-stack {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  border: 1px solid rgba(17, 24, 39, 0.36);
+  border-radius: 6px;
+  background: rgba(255, 247, 237, 0.72);
+  padding: 6px 4px;
+}
+
+.snapshot-card-back {
+  width: 28px;
+  height: 40px;
+  border: 2px solid #4b5563;
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, transparent 45%, rgba(255, 255, 255, 0.22) 45%, rgba(255, 255, 255, 0.22) 55%, transparent 55%),
+    #111827;
+}
+
+.snapshot-stack strong {
+  color: #111827;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.snapshot-stack span {
+  color: #111827;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.snapshot-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid rgba(17, 24, 39, 0.32);
+  border-radius: 7px;
+  background: rgba(255, 247, 237, 0.7);
+  padding: 7px;
+}
+
+.snapshot-field > span {
+  color: #111827;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.snapshot-field-slots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.snapshot-field-slot {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+  border: 1px dashed rgba(17, 24, 39, 0.34);
+  border-radius: 6px;
+  background: rgba(250, 250, 249, 0.66);
+}
+
+.snapshot-field-card {
+  display: grid;
+  width: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+}
+
+.snapshot-field-card img {
+  display: block;
+  width: 100%;
+  border-radius: 3px;
+  box-shadow: 0 8px 16px rgba(17, 24, 39, 0.34);
+}
+
+.snapshot-empty-slot {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.12);
+}
+
+.snapshot-zones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  background: #f8fafc;
+  padding: 8px 10px 10px;
+}
+
+.snapshot-zone {
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #ffffff;
+  padding: 6px;
+}
+
+.snapshot-zone > span {
+  display: block;
+  color: #334155;
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.snapshot-zone > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+  min-height: 22px;
+}
+
+.snapshot-field-chip {
+  max-width: 100%;
+  min-height: 20px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0f172a;
+  padding: 3px 5px;
+  font-size: 9px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 1180px) {
   .app-shell {
     grid-template-columns: 320px minmax(0, 1fr);
