@@ -1,4 +1,13 @@
 import { Handle, NodeProps, Position } from "@xyflow/react";
+import { useMemo, useState } from "react";
+
+type TargetOption = {
+  id: string;
+  name: string;
+  subtitle?: string;
+  summary: string;
+  imageUrl?: string;
+};
 
 type NodeData = {
   title: string;
@@ -8,6 +17,7 @@ type NodeData = {
   color?: string;
   imageUrl?: string;
   imageUrls?: string[];
+  targetOptions?: TargetOption[];
   nodeKind?: "card" | "action" | "condition" | "wildcard";
   available?: boolean;
 };
@@ -23,6 +33,10 @@ function BaseNode({
 }) {
   const isAvailable = data.available ?? false;
   const nodeKind = data.nodeKind ?? "wildcard";
+  const [selectedTargetId, setSelectedTargetId] = useState(data.targetOptions?.[0]?.id ?? "");
+  const selectedTarget = useMemo(() => {
+    return data.targetOptions?.find((target) => target.id === selectedTargetId) ?? data.targetOptions?.[0];
+  }, [data.targetOptions, selectedTargetId]);
   const typeLabel =
     nodeKind === "card"
       ? "Card"
@@ -45,31 +59,56 @@ function BaseNode({
       <div className="node-content-grid">
         {data.imageUrl ? (
           <img className="node-card-image" src={data.imageUrl} alt={data.title} />
+        ) : selectedTarget?.imageUrl ? (
+          <img className="node-card-image wildcard-selected-image" src={selectedTarget.imageUrl} alt={selectedTarget.name} />
         ) : null}
         <div className="node-copy">
-      <div className="node-header">
-        <div className="node-title">{data.title}</div>
-        <span className={`node-status ${isAvailable ? "status-live" : "status-idle"}`}>
-          {isAvailable ? "legal" : "idle"}
-        </span>
-      </div>
-      {data.summary ? <p className="node-summary">{data.summary}</p> : null}
-      {data.imageUrls?.length ? (
-        <div className="node-image-strip" aria-label="Cartas relacionadas">
-          {data.imageUrls.map((imageUrl) => (
-            <img key={imageUrl} src={imageUrl} alt="" />
-          ))}
-        </div>
-      ) : null}
-      {data.tags?.length ? (
-        <div className="node-tags">
-          {data.tags.map((tag) => (
-            <span key={tag} className="node-tag">
-              {tag}
+          <div className="node-header">
+            <div className="node-title">{data.title}</div>
+            <span className={`node-status ${isAvailable ? "status-live" : "status-idle"}`}>
+              {isAvailable ? "legal" : "idle"}
             </span>
-          ))}
-        </div>
-      ) : null}
+          </div>
+          {data.summary ? <p className="node-summary">{data.summary}</p> : null}
+          {data.targetOptions?.length ? (
+            <div className="wildcard-picker nodrag nopan">
+              <label>Opciones del flujo</label>
+              <select
+                value={selectedTarget?.id ?? ""}
+                onChange={(event) => setSelectedTargetId(event.target.value)}
+                onPointerDown={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                {data.targetOptions.map((target) => (
+                  <option key={target.id} value={target.id}>
+                    {target.name}
+                  </option>
+                ))}
+              </select>
+              {selectedTarget ? (
+                <div className="wildcard-selected-card">
+                  <strong>{selectedTarget.name}</strong>
+                  {selectedTarget.subtitle ? <span>{selectedTarget.subtitle}</span> : null}
+                  <p>{selectedTarget.summary}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : data.imageUrls?.length ? (
+            <div className="node-image-strip" aria-label="Cartas relacionadas">
+              {data.imageUrls.map((imageUrl) => (
+                <img key={imageUrl} src={imageUrl} alt="" />
+              ))}
+            </div>
+          ) : null}
+          {data.tags?.length ? (
+            <div className="node-tags">
+              {data.tags.map((tag) => (
+                <span key={tag} className="node-tag">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
       <Handle type="source" position={Position.Right} />

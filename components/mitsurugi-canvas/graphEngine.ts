@@ -31,6 +31,16 @@ function cardNodeData(card: CardData, gameState: GameState) {
   };
 }
 
+function targetOptions(targetCards: CardData[]) {
+  return targetCards.map((card) => ({
+    id: card.id,
+    name: card.name,
+    subtitle: card.cardType,
+    summary: card.summary,
+    imageUrl: getCardImageUrl(card),
+  }));
+}
+
 function matchesTarget(card: CardData, target: TargetFilter): boolean {
   if (target.cardId && card.id !== target.cardId) return false;
   if (target.archetype && card.archetype !== target.archetype) return false;
@@ -161,6 +171,7 @@ export function buildGraph(
         .slice(0, 4)
         .map((targetCard) => getCardImageUrl(targetCard))
         .filter(Boolean);
+      const targetCardOptions = targetOptions(targetCards);
 
       nodes.push({
         id: actionId,
@@ -226,7 +237,7 @@ export function buildGraph(
       if (mode === "expanded") {
         const targets = cards.filter((targetCard) => matchesTarget(targetCard, action.target));
 
-        if (targets.length > 0) {
+        if (targets.length === 1) {
           for (const targetCard of targets) {
             if (!included.has(targetCard.id)) {
               included.add(targetCard.id);
@@ -249,6 +260,35 @@ export function buildGraph(
               },
             });
           }
+        } else if (targets.length > 1) {
+          const wildcardId = `${actionId}-target-group`;
+
+          nodes.push({
+            id: wildcardId,
+            type: "wildcard",
+            position: { x: 0, y: 0 },
+            data: {
+              title: actionTargetLabel(action),
+              subtitle: `${targets.length} matching cards`,
+              summary: "Grupo de cartas que cumplen el mismo flujo. Elegí una para inspeccionarla sin expandir el grafo completo.",
+              imageUrls: targetImageUrls,
+              targetOptions: targetCardOptions,
+              nodeKind: "wildcard",
+              available,
+            },
+          });
+
+          edges.push({
+            id: `${actionId}-${wildcardId}`,
+            source: actionId,
+            target: wildcardId,
+            label: actionTargetLabel(action),
+            style: {
+              stroke: available ? actionColors[action.type] ?? "#64748b" : "#94a3b8",
+              strokeDasharray: "4 4",
+              opacity: available ? 1 : 0.35,
+            },
+          });
         } else {
           const wildcardId = `${actionId}-wildcard`;
 
@@ -261,6 +301,7 @@ export function buildGraph(
               subtitle: "Wildcard",
               summary: "No necesariamente es una carta hardcodeada. Puede ser cualquier carta que cumpla la condición.",
               imageUrls: targetImageUrls,
+              targetOptions: targetCardOptions,
               nodeKind: "wildcard",
               available,
             },
@@ -290,6 +331,7 @@ export function buildGraph(
             subtitle: "Target",
             summary: "",
             imageUrls: targetImageUrls,
+            targetOptions: targetCardOptions,
             nodeKind: "wildcard",
             available,
           },
@@ -384,7 +426,7 @@ function autoLayout(nodes: Node[], edges: Edge[]) {
       ...node,
       position: {
         x: level * 440,
-        y: index * 250,
+        y: index * 310,
       },
     };
   });

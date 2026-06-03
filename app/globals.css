@@ -664,6 +664,10 @@ button {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
 }
 
+.wildcard-selected-image {
+  width: 104px;
+}
+
 .node-copy {
   min-width: 0;
 }
@@ -706,6 +710,74 @@ button {
   width: 48px;
   border-radius: 3px;
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.2);
+}
+
+.wildcard-picker {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.wildcard-picker label {
+  color: #475569;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wildcard-picker select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #94a3b8;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+}
+
+.wildcard-picker select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.wildcard-selected-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 8px;
+}
+
+.wildcard-selected-card strong,
+.wildcard-selected-card span {
+  display: block;
+}
+
+.wildcard-selected-card strong {
+  color: #0f172a;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.wildcard-selected-card span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.wildcard-selected-card p {
+  display: -webkit-box;
+  margin: 6px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: #334155;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .node-tags {
@@ -919,6 +991,10 @@ button {
     width: 76px;
   }
 
+  .wildcard-selected-image {
+    width: 86px;
+  }
+
   .node-image-strip img {
     width: 42px;
   }
@@ -1003,6 +1079,10 @@ button {
 
   .node-card-image {
     width: 72px;
+  }
+
+  .wildcard-selected-image {
+    width: 78px;
   }
 
   .node-image-strip img {
