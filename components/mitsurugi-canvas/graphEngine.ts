@@ -383,8 +383,8 @@ function autoLayout(nodes: Node[], edges: Edge[]) {
     return {
       ...node,
       position: {
-        x: level * 370,
-        y: index * 190,
+        x: level * 440,
+        y: index * 250,
       },
     };
   });

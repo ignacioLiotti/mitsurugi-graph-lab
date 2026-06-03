@@ -49,7 +49,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr) 380px;
+  grid-template-columns: 350px minmax(0, 1fr) 430px;
   height: 100vh;
   height: 100dvh;
   min-height: 720px;
@@ -126,7 +126,7 @@ button {
 .empty-copy,
 .preview-desc {
   margin: 6px 0 0;
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 13px;
   line-height: 1.45;
 }
@@ -137,7 +137,7 @@ button {
 }
 
 .field-label {
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -278,7 +278,7 @@ button {
 .card-list-item small {
   display: block;
   margin-top: 4px;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 11px;
 }
 
@@ -288,7 +288,7 @@ button {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 12px;
   line-height: 1.35;
 }
@@ -397,14 +397,14 @@ button {
 
 .card-preview {
   display: grid;
-  grid-template-columns: 116px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 154px minmax(0, 1fr);
+  gap: 14px;
   margin-top: 12px;
 }
 
 .card-art-frame {
   display: grid;
-  min-height: 170px;
+  min-height: 226px;
   place-items: center;
   overflow: hidden;
   border: 1px solid #334155;
@@ -421,7 +421,7 @@ button {
 .card-art-placeholder {
   display: grid;
   width: 100%;
-  min-height: 170px;
+  min-height: 226px;
   place-items: center;
   padding: 12px;
   color: #64748b;
@@ -443,7 +443,7 @@ button {
 .preview-title-row h2 {
   margin: 0;
   color: #f8fafc;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.25;
 }
 
@@ -465,8 +465,8 @@ button {
 
 .preview-subtitle {
   margin-top: 5px;
-  color: #64748b;
-  font-size: 11px;
+  color: #94a3b8;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -482,17 +482,17 @@ button {
   background: #1e293b;
   color: #cbd5e1;
   padding: 4px 7px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .preview-desc {
   display: -webkit-box;
-  max-height: 116px;
+  max-height: 178px;
   overflow: auto;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 7;
-  color: #cbd5e1;
+  -webkit-line-clamp: 10;
+  color: #e2e8f0;
   scrollbar-width: thin;
 }
 
@@ -575,8 +575,8 @@ button {
 }
 
 .graph-node {
-  min-width: 290px;
-  max-width: 330px;
+  min-width: 350px;
+  max-width: 390px;
   overflow: hidden;
   border: 2px solid;
   border-radius: 8px;
@@ -618,7 +618,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 7px 10px;
+  padding: 9px 12px;
   color: #ffffff;
   font-size: 10px;
   font-weight: 900;
@@ -654,14 +654,14 @@ button {
 .node-content-grid {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  padding: 10px;
+  gap: 12px;
+  padding: 12px;
 }
 
 .node-card-image {
-  width: 58px;
+  width: 88px;
   border-radius: 4px;
-  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.22);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
 }
 
 .node-copy {
@@ -677,7 +677,7 @@ button {
 
 .node-title {
   color: #0f172a;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.25;
 }
@@ -691,21 +691,21 @@ button {
 
 .node-summary {
   margin: 8px 0 0;
-  color: #334155;
-  font-size: 12px;
-  line-height: 1.4;
+  color: #1e293b;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .node-image-strip {
   display: flex;
-  gap: 5px;
-  margin-top: 8px;
+  gap: 7px;
+  margin-top: 10px;
 }
 
 .node-image-strip img {
-  width: 32px;
+  width: 48px;
   border-radius: 3px;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.2);
 }
 
 .node-tags {
@@ -749,7 +749,7 @@ button {
 
 @media (max-width: 1180px) {
   .app-shell {
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: 320px minmax(0, 1fr);
   }
 
   .state-panel {
@@ -787,22 +787,22 @@ button {
     z-index: 50;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    gap: 8px;
     border-bottom: 1px solid #1e293b;
     background: rgba(15, 23, 42, 0.96);
-    padding: 8px;
+    padding: 10px;
     backdrop-filter: blur(10px);
   }
 
   .mobile-nav a {
     display: grid;
-    min-height: 36px;
+    min-height: 42px;
     place-items: center;
     border: 1px solid #334155;
     border-radius: 8px;
     background: #111827;
     color: #e2e8f0;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     text-decoration: none;
   }
@@ -814,7 +814,7 @@ button {
     min-height: auto;
     max-height: none;
     border: 0;
-    scroll-margin-top: 62px;
+    scroll-margin-top: 72px;
   }
 
   .sidebar {
@@ -829,7 +829,7 @@ button {
   .opponent-control,
   .ritual-panel,
   .legal-list {
-    padding: 12px;
+    padding: 14px;
   }
 
   .brand-panel p {
@@ -841,24 +841,33 @@ button {
   }
 
   .segmented button {
-    min-height: 40px;
+    min-height: 44px;
     padding: 8px;
   }
 
   .secondary-button,
   .search-box {
-    min-height: 44px;
+    min-height: 48px;
   }
 
   .card-list {
     flex: none;
-    max-height: 42dvh;
-    padding: 10px 12px 14px;
+    max-height: 50dvh;
+    padding: 12px 14px 16px;
   }
 
   .card-list-item {
-    margin-bottom: 7px;
-    padding: 10px;
+    margin-bottom: 9px;
+    padding: 12px;
+  }
+
+  .card-list-item span {
+    font-size: 14px;
+  }
+
+  .card-list-item small,
+  .card-list-item p {
+    font-size: 12px;
   }
 
   .card-list-item p {
@@ -866,9 +875,9 @@ button {
   }
 
   .canvas-area {
-    height: 72dvh;
-    min-height: 520px;
-    scroll-margin-top: 62px;
+    height: 82dvh;
+    min-height: 620px;
+    scroll-margin-top: 72px;
   }
 
   .top-card {
@@ -884,7 +893,7 @@ button {
   .node-legend {
     left: 8px;
     right: 8px;
-    top: 86px;
+    top: 92px;
     max-width: none;
   }
 
@@ -902,16 +911,21 @@ button {
   }
 
   .graph-node {
-    min-width: 270px;
-    max-width: 300px;
+    min-width: 320px;
+    max-width: 350px;
   }
 
   .node-card-image {
-    width: 52px;
+    width: 76px;
+  }
+
+  .node-image-strip img {
+    width: 42px;
   }
 
   .card-preview {
-    grid-template-columns: 100px minmax(0, 1fr);
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 12px;
   }
 
   .card-preview-panel {
@@ -920,12 +934,12 @@ button {
 
   .card-art-frame,
   .card-art-placeholder {
-    min-height: 146px;
+    min-height: 194px;
   }
 
   .preview-desc {
-    max-height: 128px;
-    -webkit-line-clamp: 8;
+    max-height: 170px;
+    -webkit-line-clamp: 10;
   }
 
   .zone-editor {
@@ -944,8 +958,8 @@ button {
   }
 
   .zone-pill {
-    min-height: 34px;
-    padding: 7px 10px;
+    min-height: 40px;
+    padding: 8px 11px;
     font-size: 12px;
   }
 
@@ -961,11 +975,11 @@ button {
   }
 
   .card-preview {
-    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-columns: 124px minmax(0, 1fr);
   }
 
   .preview-title-row h2 {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .preview-stats span {
@@ -973,7 +987,40 @@ button {
   }
 
   .canvas-area {
-    height: 76dvh;
-    min-height: 500px;
+    height: 86dvh;
+    min-height: 640px;
+  }
+
+  .graph-node {
+    min-width: 300px;
+    max-width: 330px;
+  }
+
+  .node-content-grid {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .node-card-image {
+    width: 72px;
+  }
+
+  .node-image-strip img {
+    width: 38px;
+  }
+}
+
+@media (max-width: 390px) {
+  .card-preview {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .card-art-frame,
+  .card-art-placeholder {
+    min-height: 164px;
+  }
+
+  .preview-desc {
+    max-height: 150px;
   }
 }
