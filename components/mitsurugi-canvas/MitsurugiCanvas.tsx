@@ -5,6 +5,7 @@ import "@xyflow/react/dist/style.css";
 import {
   Background,
   Controls,
+  Node,
   MiniMap,
   ReactFlow,
   useEdgesState,
@@ -53,6 +54,8 @@ const nodeLegend = [
 
 export default function MitsurugiCanvas() {
   const [appMode, setAppMode] = useState<"map" | "playground">("map");
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>("habakiri");
   const [mode, setMode] = useState<GraphMode>("expanded");
   const [includeConditions, setIncludeConditions] = useState(true);
@@ -63,6 +66,7 @@ export default function MitsurugiCanvas() {
   const [playgroundState, setPlaygroundState] = useState(() => createInitialPlaygroundState(cards, ["habakiri", "prayers"]));
   const [playgroundSteps, setPlaygroundSteps] = useState<PlaygroundStep[]>([]);
   const [playgroundTargets, setPlaygroundTargets] = useState<Record<string, string>>({});
+  const [selectedPlaygroundCardId, setSelectedPlaygroundCardId] = useState<string | null>(null);
   const {
     gameState,
     toggleCardInZone,
@@ -135,7 +139,7 @@ export default function MitsurugiCanvas() {
   }, [gameState]);
 
   const playgroundLegalActions = useMemo(() => {
-    return cards.flatMap((card) =>
+    const allActions = cards.flatMap((card) =>
       card.actions
         .filter((action) => isActionAvailable(cards, playgroundState, card, action))
         .map((action) => ({
@@ -144,13 +148,21 @@ export default function MitsurugiCanvas() {
           targets: actionTargets(cards, playgroundState, action),
         })),
     );
-  }, [playgroundState]);
+
+    if (!selectedPlaygroundCardId) return allActions;
+    return allActions.filter(({ card }) => card.id === selectedPlaygroundCardId);
+  }, [playgroundState, selectedPlaygroundCardId]);
+
+  const selectedPlaygroundCard = selectedPlaygroundCardId
+    ? cards.find((card) => card.id === selectedPlaygroundCardId)
+    : undefined;
 
   function resetPlayground(nextHand = playgroundHand) {
     setPlaygroundHand(nextHand);
     setPlaygroundState(createInitialPlaygroundState(cards, nextHand));
     setPlaygroundSteps([]);
     setPlaygroundTargets({});
+    setSelectedPlaygroundCardId(null);
   }
 
   function togglePlaygroundHand(cardId: string) {
@@ -185,8 +197,19 @@ export default function MitsurugiCanvas() {
     ]);
   }
 
+  function handleNodeClick(_: React.MouseEvent, node: Node) {
+    if (appMode !== "playground") return;
+
+    const cardId = typeof node.data?.cardId === "string" ? node.data.cardId : null;
+    setSelectedPlaygroundCardId(cardId);
+  }
+
   return (
-    <main className="app-shell">
+    <main
+      className={`app-shell ${leftCollapsed ? "left-collapsed" : ""} ${
+        rightCollapsed ? "right-collapsed" : ""
+      }`}
+    >
       <nav className="mobile-nav" aria-label="Navegacion mobile">
         <a href="#cards-panel">Cartas</a>
         <a href="#graph-panel">Grafo</a>
@@ -194,6 +217,10 @@ export default function MitsurugiCanvas() {
       </nav>
 
       <aside className="sidebar" id="cards-panel">
+        <button className="collapse-tab collapse-tab-left" onClick={() => setLeftCollapsed((value) => !value)}>
+          {leftCollapsed ? "Mostrar cartas" : "Ocultar"}
+        </button>
+        <div className="sidebar-inner">
         <div className="brand-panel">
           <div className="brand-title">
             <Waypoints size={20} />
@@ -269,6 +296,7 @@ export default function MitsurugiCanvas() {
             </button>
           ))}
         </div>
+        </div>
       </aside>
 
       <section className="canvas-area" id="graph-panel">
@@ -310,6 +338,10 @@ export default function MitsurugiCanvas() {
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeClick={handleNodeClick}
+          onPaneClick={() => {
+            if (appMode === "playground") setSelectedPlaygroundCardId(null);
+          }}
           fitView
         >
           <Background />
@@ -319,6 +351,10 @@ export default function MitsurugiCanvas() {
       </section>
 
       <aside className="state-panel" id="state-panel">
+        <button className="collapse-tab collapse-tab-right" onClick={() => setRightCollapsed((value) => !value)}>
+          {rightCollapsed ? "Mostrar panel" : "Ocultar"}
+        </button>
+        <div className="state-panel-inner">
         {appMode === "playground" ? (
           <>
             <div className="playground-panel">
@@ -361,6 +397,16 @@ export default function MitsurugiCanvas() {
 
               <div className="playground-section">
                 <div className="field-label">Decisiones legales</div>
+                <div className="playground-filter">
+                  {selectedPlaygroundCard ? (
+                    <>
+                      <span>Filtrando por {selectedPlaygroundCard.name}</span>
+                      <button onClick={() => setSelectedPlaygroundCardId(null)}>Ver todas</button>
+                    </>
+                  ) : (
+                    <span>Seleccioná un nodo de carta para filtrar sus decisiones.</span>
+                  )}
+                </div>
                 <div className="playground-actions">
                   {playgroundLegalActions.length ? (
                     playgroundLegalActions.map(({ card, action, targets }) => {
@@ -554,6 +600,7 @@ export default function MitsurugiCanvas() {
         </div>
           </>
         )}
+        </div>
       </aside>
     </main>
   );

@@ -57,18 +57,81 @@ button {
   background: #0f172a;
 }
 
+.app-shell.left-collapsed {
+  grid-template-columns: 42px minmax(0, 1fr) 430px;
+}
+
+.app-shell.right-collapsed {
+  grid-template-columns: 350px minmax(0, 1fr) 42px;
+}
+
+.app-shell.left-collapsed.right-collapsed {
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+}
+
 .mobile-nav {
   display: none;
 }
 
 .sidebar,
 .state-panel {
+  position: relative;
   display: flex;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
   border-color: #1e293b;
   background: #0f172a;
+}
+
+.sidebar-inner,
+.state-panel-inner {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.collapse-tab {
+  position: absolute;
+  z-index: 30;
+  display: grid;
+  min-width: 86px;
+  min-height: 32px;
+  place-items: center;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #020617;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.collapse-tab-left {
+  right: 8px;
+  top: 8px;
+}
+
+.collapse-tab-right {
+  left: 8px;
+  top: 8px;
+}
+
+.left-collapsed .sidebar-inner,
+.right-collapsed .state-panel-inner {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.left-collapsed .collapse-tab-left,
+.right-collapsed .collapse-tab-right {
+  top: 50%;
+  left: 50%;
+  right: auto;
+  min-width: 120px;
+  transform: translate(-50%, -50%) rotate(-90deg);
 }
 
 .sidebar {
@@ -621,6 +684,32 @@ button {
   margin-top: 10px;
 }
 
+.playground-filter {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #020617;
+  padding: 9px;
+}
+
+.playground-filter span {
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.playground-filter button {
+  min-height: 32px;
+  border: 1px solid #475569;
+  border-radius: 7px;
+  background: #1e293b;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .playground-action {
   display: grid;
   gap: 7px;
@@ -926,6 +1015,12 @@ button {
     grid-template-columns: 320px minmax(0, 1fr);
   }
 
+  .app-shell.left-collapsed,
+  .app-shell.right-collapsed,
+  .app-shell.left-collapsed.right-collapsed {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
   .state-panel {
     position: absolute;
     bottom: 0;
@@ -953,6 +1048,12 @@ button {
     overflow: visible;
     flex-direction: column;
     scroll-behavior: smooth;
+  }
+
+  .app-shell.left-collapsed,
+  .app-shell.right-collapsed,
+  .app-shell.left-collapsed.right-collapsed {
+    display: flex;
   }
 
   .mobile-nav {
@@ -989,6 +1090,20 @@ button {
     max-height: none;
     border: 0;
     scroll-margin-top: 72px;
+  }
+
+  .left-collapsed .sidebar,
+  .right-collapsed .state-panel {
+    min-height: 54px;
+  }
+
+  .left-collapsed .collapse-tab-left,
+  .right-collapsed .collapse-tab-right {
+    left: auto;
+    right: 12px;
+    top: 10px;
+    min-width: 132px;
+    transform: none;
   }
 
   .sidebar {

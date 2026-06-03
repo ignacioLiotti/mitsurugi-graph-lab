@@ -106,6 +106,7 @@ function cardNode(card: CardData, x: number, y: number, available = true): Node 
       subtitle: card.cardType,
       summary: card.summary,
       tags: card.tags ?? [],
+      cardId: card.id,
       imageUrl: getCardImageUrl(card),
       nodeKind: "card",
       available,
