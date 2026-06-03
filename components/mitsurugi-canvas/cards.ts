@@ -90,6 +90,14 @@ export const cards: CardData[] = [
         target: { cardId: "murakumo", from: "graveyard", to: "field" },
         condition: { type: "single", label: "Murakumo was properly Ritual Summoned first" },
       },
+      {
+        id: "link-summon",
+        label: "Link Summon using Murakumo",
+        type: "linkSummon",
+        from: "extraDeck",
+        to: "field",
+        target: { kind: "extra", from: "extraDeck", to: "field", text: "Link Monster" },
+      },
     ],
   },
   {
@@ -153,6 +161,14 @@ export const cards: CardData[] = [
         to: "hand",
         target: { archetype: "Mitsurugi", from: "deck", to: "hand", text: "Mitsurugi Spell/Trap" },
       },
+      {
+        id: "xyz-summon",
+        label: "Xyz Summon Rank 4",
+        type: "xyzSummon",
+        from: "extraDeck",
+        to: "field",
+        target: { kind: "extra", from: "extraDeck", to: "field", text: "Rank 4 Xyz Monster" },
+      },
     ],
   },
   {
@@ -168,6 +184,14 @@ export const cards: CardData[] = [
     tags: ["searcher", "monster", "reptile"],
     summary: "Busca monstruos Mitsurugi al ser invocado o tributado.",
     actions: [
+      {
+        id: "normal-summon",
+        label: "Normal Summon Aramasa",
+        type: "normalSummon",
+        from: "hand",
+        to: "field",
+        target: { cardId: "aramasa", from: "hand", to: "field" },
+      },
       {
         id: "aramasa-search-monster",
         label: "Summoned/tributed: search Mitsurugi monster",
@@ -352,6 +376,14 @@ export const cards: CardData[] = [
         to: "field",
         target: { kind: "monster", race: "Reptile", from: "graveyard", to: "field" },
       },
+      {
+        id: "set-card",
+        label: "Set Great Purification",
+        type: "setCard",
+        from: "hand",
+        to: "field",
+        target: { cardId: "purification", from: "hand", to: "field" },
+      },
     ],
   },
   {
@@ -423,6 +455,25 @@ export const cards: CardData[] = [
     ],
   },
   {
+    id: "dugares",
+    name: "Number 60: Dugares the Timeless",
+    apiId: 66011101,
+    kind: "extra",
+    race: "Fiend",
+    level: 4,
+    cardType: "Xyz Monster",
+    tags: ["xyz", "rank 4", "draw", "extension"],
+    summary: "Rank 4 genérico. Puede desacoplar 2 materiales para robar 2 y descartar 1.",
+    actions: [
+      {
+        id: "dugares-draw-discard",
+        label: "Detach 2: draw 2 and discard 1",
+        type: "enable",
+        target: { text: "Draw 2 cards, then discard 1" },
+      },
+    ],
+  },
+  {
     id: "dyna-mondo",
     name: "Dyna Mondo",
     apiId: 73898890,
@@ -465,6 +516,25 @@ export const cards: CardData[] = [
         from: "field",
         to: "extraDeck",
         target: { kind: "extra", from: "extraDeck", to: "field", text: "Link Monster using I:P" },
+      },
+    ],
+  },
+  {
+    id: "number-90",
+    name: "Number 90: Galaxy-Eyes Photon Lord",
+    apiId: 8165596,
+    kind: "extra",
+    race: "Warrior",
+    level: 8,
+    cardType: "Xyz Monster",
+    tags: ["xyz", "rank 8", "negate", "interaction"],
+    summary: "Rank 8 genérico. Puede negar efectos de monstruo y presionar con materiales Photon/Galaxy.",
+    actions: [
+      {
+        id: "number-90-monster-negate",
+        label: "Detach material: negate monster effect",
+        type: "negate",
+        target: { text: "Opponent monster effect" },
       },
     ],
   },

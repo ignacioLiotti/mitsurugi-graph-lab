@@ -38,10 +38,15 @@ export function parsePlaygroundScenario(value: unknown): ScenarioParseResult {
     ? value.steps
         .filter(isObject)
         .map((step) => ({
+          step: typeof step.step === "number" ? step.step : undefined,
           sourceCardId: typeof step.sourceCardId === "string" ? step.sourceCardId : "",
           actionId: typeof step.actionId === "string" ? step.actionId : "",
           targetCardId: typeof step.targetCardId === "string" ? step.targetCardId : undefined,
           label: typeof step.label === "string" ? step.label : undefined,
+          effectNumber: typeof step.effectNumber === "number" ? step.effectNumber : undefined,
+          effectName: typeof step.effectName === "string" ? step.effectName : undefined,
+          description: typeof step.description === "string" ? step.description : undefined,
+          materials: stringArray(step.materials),
         }))
         .filter((step) => step.sourceCardId && step.actionId)
     : [];
@@ -103,6 +108,10 @@ export function scenarioToGameState(cards: CardData[], scenario: PlaygroundScena
 
 function stepLabel(cards: CardData[], step: PlaygroundScenarioStep) {
   if (step.label) return step.label;
+  if (step.effectName) {
+    const target = step.targetCardId ? cards.find((card) => card.id === step.targetCardId) : undefined;
+    return target ? `${step.effectName} -> ${target.name}` : step.effectName;
+  }
 
   const source = cards.find((card) => card.id === step.sourceCardId);
   const action = source?.actions.find((item) => item.id === step.actionId);
@@ -128,6 +137,10 @@ export function scenarioToSteps(cards: CardData[], scenario: PlaygroundScenario)
       actionId: step.actionId,
       targetCardId: step.targetCardId,
       label: stepLabel(cards, step),
+      effectNumber: step.effectNumber,
+      effectName: step.effectName,
+      description: step.description,
+      materials: step.materials,
     }));
 }
 
@@ -155,6 +168,10 @@ export function currentPlaygroundToScenario(
       actionId: step.actionId,
       targetCardId: step.targetCardId,
       label: step.label,
+      effectNumber: step.effectNumber,
+      effectName: step.effectName,
+      description: step.description,
+      materials: step.materials,
     })),
   };
 }

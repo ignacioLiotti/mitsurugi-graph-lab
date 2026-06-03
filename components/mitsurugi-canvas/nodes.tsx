@@ -1,4 +1,12 @@
-import { Handle, NodeProps, Position } from "@xyflow/react";
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  EdgeProps,
+  getBezierPath,
+  Handle,
+  NodeProps,
+  Position,
+} from "@xyflow/react";
 import { useMemo, useState } from "react";
 
 type TargetOption = {
@@ -32,6 +40,10 @@ type SnapshotCard = {
 type SnapshotNodeData = {
   title: string;
   subtitle?: string;
+  description?: string;
+  effectName?: string;
+  effectNumber?: number;
+  materials?: string[];
   snapshotIndex: number;
   active?: boolean;
   deckCount: number;
@@ -41,8 +53,13 @@ type SnapshotNodeData = {
     field: SnapshotCard[];
     graveyard: SnapshotCard[];
     banished: SnapshotCard[];
+    deck: SnapshotCard[];
+    extraDeck: SnapshotCard[];
   };
+  highlightedCardIds?: string[];
+  highlightedZones?: string[];
   onSelectCard?: (cardId: string) => void;
+  onInspectZone?: (zone: "hand" | "field" | "graveyard" | "banished" | "deck" | "extraDeck") => void;
 };
 
 function BaseNode({
@@ -159,18 +176,43 @@ export function WildcardNode({ data }: NodeProps) {
 function SnapshotCardButton({
   card,
   variant,
+  highlighted,
   onSelect,
 }: {
   card: SnapshotCard;
   variant: "image" | "chip";
+  highlighted?: boolean;
   onSelect?: (cardId: string) => void;
 }) {
+  function selectCard() {
+    onSelect?.(card.id);
+    window.dispatchEvent(
+      new CustomEvent("mitsurugi:snapshot-card", {
+        detail: { cardId: card.id },
+      }),
+    );
+  }
+
   return (
     <button
-      className={variant === "image" ? "snapshot-field-card nodrag nopan" : "snapshot-field-chip nodrag nopan"}
+      type="button"
+      className={`${variant === "image" ? "snapshot-field-card" : "snapshot-field-chip"} ${
+        highlighted ? "snapshot-card-highlight" : ""
+      } nodrag nopan`}
+      data-card-id={card.id}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        selectCard();
+      }}
+      onMouseDown={(event) => event.stopPropagation()}
+      onMouseUp={(event) => {
+        event.stopPropagation();
+        selectCard();
+      }}
+      onFocus={() => selectCard()}
       onClick={(event) => {
         event.stopPropagation();
-        onSelect?.(card.id);
+        selectCard();
       }}
       title={card.name}
     >
@@ -179,24 +221,53 @@ function SnapshotCardButton({
   );
 }
 
-function SnapshotStack({ label, count }: { label: string; count: number }) {
+function SnapshotStack({
+  label,
+  count,
+  zone,
+  highlighted,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  zone?: "hand" | "field" | "graveyard" | "banished" | "deck" | "extraDeck";
+  highlighted?: boolean;
+  onClick?: () => void;
+}) {
+  function inspectZone() {
+    onClick?.();
+    if (!zone) return;
+    window.dispatchEvent(
+      new CustomEvent("mitsurugi:snapshot-zone", {
+        detail: { zone },
+      }),
+    );
+  }
+
   return (
-    <div className="snapshot-stack">
+    <button
+      type="button"
+      className={`snapshot-stack ${highlighted ? "snapshot-stack-highlight" : ""} nodrag nopan`}
+      data-zone={zone}
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        inspectZone();
+      }}
+    >
       <div className="snapshot-card-back" />
       <strong>{label}</strong>
       <span>{count}</span>
-    </div>
+    </button>
   );
 }
 
 export function SnapshotNode({ data }: NodeProps) {
   const typedData = data as SnapshotNodeData;
-  const fieldCards = typedData.zones.field.slice(0, 5);
-  const zoneList = [
-    { key: "hand", label: "Hand", cards: typedData.zones.hand },
-    { key: "graveyard", label: "GY", cards: typedData.zones.graveyard },
-    { key: "banished", label: "Banish", cards: typedData.zones.banished },
-  ];
+  const fieldCards = typedData.zones.field.slice(0, 10);
+  const highlightedCards = new Set(typedData.highlightedCardIds ?? []);
+  const highlightedZones = new Set(typedData.highlightedZones ?? []);
 
   return (
     <div className={`snapshot-node ${typedData.active ? "snapshot-node-active" : ""}`}>
@@ -205,42 +276,138 @@ export function SnapshotNode({ data }: NodeProps) {
         <strong>{typedData.title}</strong>
         <span>{typedData.subtitle}</span>
       </div>
+      {(typedData.effectName || typedData.description || typedData.materials?.length) && (
+        <div className="snapshot-step-detail">
+          {typedData.effectName ? (
+            <strong>
+              {typeof typedData.effectNumber === "number" ? `E${typedData.effectNumber}: ` : ""}
+              {typedData.effectName}
+            </strong>
+          ) : null}
+          {typedData.description ? <p>{typedData.description}</p> : null}
+          {typedData.materials?.length ? <span>Materials: {typedData.materials.join(", ")}</span> : null}
+        </div>
+      )}
 
       <div className="snapshot-board-main">
-        <SnapshotStack label="Deck" count={typedData.deckCount} />
+        <div className="snapshot-side-stack">
+          <SnapshotStack
+            label="Extra"
+            count={typedData.extraDeckCount}
+            zone="extraDeck"
+            highlighted={highlightedZones.has("extraDeck")}
+            onClick={() => typedData.onInspectZone?.("extraDeck")}
+          />
+          <SnapshotStack
+            label="Field"
+            count={0}
+            zone="field"
+            highlighted={highlightedZones.has("field")}
+            onClick={() => typedData.onInspectZone?.("field")}
+          />
+        </div>
+
         <div className="snapshot-field">
           <span>Field</span>
           <div className="snapshot-field-slots">
-            {Array.from({ length: 5 }).map((_, index) => (
+            {Array.from({ length: 10 }).map((_, index) => (
               <div key={index} className="snapshot-field-slot">
                 {fieldCards[index] ? (
-                  <SnapshotCardButton card={fieldCards[index]} variant="image" onSelect={typedData.onSelectCard} />
+                  <SnapshotCardButton
+                    card={fieldCards[index]}
+                    variant="image"
+                    highlighted={highlightedCards.has(fieldCards[index].id) || highlightedZones.has("field")}
+                    onSelect={typedData.onSelectCard}
+                  />
                 ) : (
-                  <span className="snapshot-empty-slot" />
+                  <span className={highlightedZones.has("field") ? "snapshot-empty-slot snapshot-slot-highlight" : "snapshot-empty-slot"} />
                 )}
               </div>
             ))}
           </div>
         </div>
-        <SnapshotStack label="Extra" count={typedData.extraDeckCount} />
+
+        <div className="snapshot-side-stack">
+          <SnapshotStack
+            label="Deck"
+            count={typedData.deckCount}
+            zone="deck"
+            highlighted={highlightedZones.has("deck")}
+            onClick={() => typedData.onInspectZone?.("deck")}
+          />
+          <SnapshotStack
+            label="GY"
+            count={typedData.zones.graveyard.length}
+            zone="graveyard"
+            highlighted={highlightedZones.has("graveyard")}
+            onClick={() => typedData.onInspectZone?.("graveyard")}
+          />
+          <SnapshotStack
+            label="Banish"
+            count={typedData.zones.banished.length}
+            zone="banished"
+            highlighted={highlightedZones.has("banished")}
+            onClick={() => typedData.onInspectZone?.("banished")}
+          />
+        </div>
       </div>
 
       <div className="snapshot-zones">
-        {zoneList.map((zone) => (
-          <div key={zone.key} className="snapshot-zone">
-            <span>
-              {zone.label} {zone.cards.length}
-            </span>
-            <div>
-              {zone.cards.map((card) => (
-                <SnapshotCardButton key={card.id} card={card} variant="chip" onSelect={typedData.onSelectCard} />
-              ))}
-            </div>
+        <div className="snapshot-zone snapshot-hand-zone">
+          <span>Hand {typedData.zones.hand.length}</span>
+          <div>
+            {typedData.zones.hand.map((card) => (
+              <SnapshotCardButton
+                key={card.id}
+                card={card}
+                variant="image"
+                highlighted={highlightedCards.has(card.id) || highlightedZones.has("hand")}
+                onSelect={typedData.onSelectCard}
+              />
+            ))}
           </div>
-        ))}
+        </div>
       </div>
       <Handle type="source" position={Position.Right} />
     </div>
+  );
+}
+
+export function SnapshotRelationEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+  markerEnd,
+}: EdgeProps) {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+  const label = typeof data?.label === "string" ? data.label : "";
+
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} className="snapshot-relation-path" />
+      <EdgeLabelRenderer>
+        <div
+          className="snapshot-relation-label nodrag nopan"
+          style={{
+            transform: `translate(-50%, -100%) translate(${labelX}px, ${labelY - 18}px)`,
+          }}
+        >
+          {label}
+        </div>
+      </EdgeLabelRenderer>
+    </>
   );
 }
 
@@ -250,4 +417,8 @@ export const nodeTypes = {
   condition: ConditionNode,
   wildcard: WildcardNode,
   snapshot: SnapshotNode,
+};
+
+export const edgeTypes = {
+  snapshotRelation: SnapshotRelationEdge,
 };

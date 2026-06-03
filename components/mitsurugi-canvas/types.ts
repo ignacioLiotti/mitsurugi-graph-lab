@@ -10,6 +10,7 @@ export type Zone =
 export type CardKind = "monster" | "spell" | "trap" | "extra";
 
 export type ActionType =
+  | "normalSummon"
   | "search"
   | "specialSummon"
   | "ritualSummon"
@@ -20,6 +21,7 @@ export type ActionType =
   | "negate"
   | "linkSummon"
   | "xyzSummon"
+  | "setCard"
   | "enable";
 
 export type TargetFilter = {
@@ -84,10 +86,15 @@ export type GameState = {
 };
 
 export type PlaygroundScenarioStep = {
+  step?: number;
   sourceCardId: string;
   actionId: string;
   targetCardId?: string;
   label?: string;
+  effectNumber?: number;
+  effectName?: string;
+  description?: string;
+  materials?: string[];
 };
 
 export type PlaygroundScenario = {

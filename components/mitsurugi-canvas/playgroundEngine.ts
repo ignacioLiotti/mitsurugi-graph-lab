@@ -10,12 +10,22 @@ export type PlaygroundStep = {
   actionId: string;
   targetCardId?: string;
   label: string;
+  effectNumber?: number;
+  effectName?: string;
+  description?: string;
+  materials?: string[];
 };
 
 export type PlaygroundSnapshot = {
   id: string;
   label: string;
+  description?: string;
+  effectName?: string;
+  effectNumber?: number;
+  materials?: string[];
   state: GameState;
+  sourceCardId?: string;
+  targetCardId?: string;
 };
 
 export function createInitialPlaygroundState(cards: CardData[], hand: string[]): GameState {
@@ -81,12 +91,25 @@ export function applyPlaygroundAction(
   sourceCard: CardData,
   action: CardAction,
   targetCardId?: string,
+  materials: string[] = [],
 ) {
   let nextState = gameState;
+
+  for (const material of materials) {
+    nextState = removeCardFromZones(nextState, material);
+    if (action.type !== "xyzSummon") {
+      nextState = addToZone(nextState, "graveyard", material);
+    }
+  }
 
   if (targetCardId && action.target.to && action.target.to !== "any") {
     nextState = removeCardFromZones(nextState, targetCardId);
     nextState = addToZone(nextState, action.target.to, targetCardId);
+  }
+
+  if (action.id === "prayers-both" && targetCardId) {
+    nextState = removeCardFromZones(nextState, targetCardId);
+    nextState = addToZone(nextState, "graveyard", targetCardId);
   }
 
   if (action.type === "tribute") {
@@ -95,7 +118,8 @@ export function applyPlaygroundAction(
     nextState = addToZone(nextState, "graveyard", tributeTarget);
   }
 
-  if (["ritualSummon", "specialSummon", "revive"].includes(action.type) && targetCardId) {
+  if (["normalSummon", "ritualSummon", "specialSummon", "revive", "linkSummon", "xyzSummon", "setCard"].includes(action.type) && targetCardId) {
+    nextState = removeCardFromZones(nextState, targetCardId);
     nextState = addToZone(nextState, "field", targetCardId);
   }
 
@@ -145,7 +169,7 @@ export function buildPlaygroundGraph(cards: CardData[], initialHand: string[], s
       data: {
         title: step.label,
         subtitle: "Decision",
-        summary: sourceCard ? `Desde ${sourceCard.name}` : "",
+        summary: step.description ?? (sourceCard ? `Desde ${sourceCard.name}` : ""),
         imageUrl: sourceCard ? getCardImageUrl(sourceCard) : undefined,
         imageUrls: targetCard ? [getCardImageUrl(targetCard)].filter(Boolean) : [],
         nodeKind: "action",
@@ -217,11 +241,58 @@ function snapshotCards(cardsById: Map<string, CardData>, cardIds: string[], limi
     .filter(Boolean);
 }
 
+function cardZone(state: GameState, cardId: string): ConcreteZone | null {
+  const zones: ConcreteZone[] = ["hand", "field", "graveyard", "banished", "deck", "extraDeck"];
+  return zones.find((zone) => state[zone].includes(cardId)) ?? null;
+}
+
+function snapshotHighlights(previous: PlaygroundSnapshot | undefined, current: PlaygroundSnapshot) {
+  const highlightedCardIds = new Set<string>();
+  const highlightedZones = new Set<ConcreteZone>();
+
+  if (current.sourceCardId) highlightedCardIds.add(current.sourceCardId);
+  if (current.targetCardId) highlightedCardIds.add(current.targetCardId);
+
+  if (previous) {
+    const allCardIds = new Set([
+      ...previous.state.hand,
+      ...previous.state.field,
+      ...previous.state.graveyard,
+      ...previous.state.banished,
+      ...previous.state.deck,
+      ...previous.state.extraDeck,
+      ...current.state.hand,
+      ...current.state.field,
+      ...current.state.graveyard,
+      ...current.state.banished,
+      ...current.state.deck,
+      ...current.state.extraDeck,
+    ]);
+
+    allCardIds.forEach((cardId) => {
+      const from = cardZone(previous.state, cardId);
+      const to = cardZone(current.state, cardId);
+
+      if (from !== to) {
+        highlightedCardIds.add(cardId);
+        if (from) highlightedZones.add(from);
+        if (to) highlightedZones.add(to);
+      }
+    });
+  }
+
+  return {
+    highlightedCardIds: Array.from(highlightedCardIds),
+    highlightedZones: Array.from(highlightedZones),
+  };
+}
+
 export function buildPlaygroundTimelineGraph(
   cards: CardData[],
   snapshots: PlaygroundSnapshot[],
   activeSnapshotIndex: number,
   onSelectCard: (cardId: string) => void,
+  onInspectZone: (zone: ConcreteZone) => void,
 ) {
   const cardsById = new Map(cards.map((card) => [card.id, card]));
   const nodes: Node[] = [];
@@ -230,28 +301,38 @@ export function buildPlaygroundTimelineGraph(
   snapshots.forEach((snapshot, index) => {
     const column = index % 4;
     const row = Math.floor(index / 4);
+    const highlights = snapshotHighlights(snapshots[index - 1], snapshot);
 
     nodes.push({
       id: `timeline-${snapshot.id}`,
       type: "snapshot",
       position: {
-        x: column * 430,
-        y: row * 410 + (column % 2 === 0 ? 0 : 58),
+        x: 220 + column * 740,
+        y: 220 + row * 580 + (column % 2 === 0 ? 0 : 72),
       },
       data: {
         title: `T${index}`,
         subtitle: snapshot.label,
+        description: snapshot.description,
+        effectName: snapshot.effectName,
+        effectNumber: snapshot.effectNumber,
+        materials: snapshot.materials,
         snapshotIndex: index,
         active: index === activeSnapshotIndex,
         deckCount: snapshot.state.deck.length,
         extraDeckCount: snapshot.state.extraDeck.length,
         zones: {
           hand: snapshotCards(cardsById, snapshot.state.hand, 7),
-          field: snapshotCards(cardsById, snapshot.state.field, 5),
+          field: snapshotCards(cardsById, snapshot.state.field, 10),
           graveyard: snapshotCards(cardsById, snapshot.state.graveyard, 6),
           banished: snapshotCards(cardsById, snapshot.state.banished, 6),
+          deck: snapshotCards(cardsById, snapshot.state.deck, 12),
+          extraDeck: snapshotCards(cardsById, snapshot.state.extraDeck, 12),
         },
+        highlightedCardIds: highlights.highlightedCardIds,
+        highlightedZones: highlights.highlightedZones,
         onSelectCard,
+        onInspectZone,
       },
     });
 
@@ -260,7 +341,10 @@ export function buildPlaygroundTimelineGraph(
         id: `timeline-${snapshots[index - 1].id}-${snapshot.id}`,
         source: `timeline-${snapshots[index - 1].id}`,
         target: `timeline-${snapshot.id}`,
-        label: snapshot.label,
+        type: "snapshotRelation",
+        data: {
+          label: snapshot.label,
+        },
         animated: true,
         markerEnd: {
           type: MarkerType.ArrowClosed,

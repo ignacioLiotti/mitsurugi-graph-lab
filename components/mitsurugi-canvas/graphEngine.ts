@@ -6,6 +6,7 @@ export type GraphMode = "direct" | "expanded";
 type ConcreteZone = Exclude<Zone, "any">;
 
 const actionColors: Record<string, string> = {
+  normalSummon: "#0f766e",
   search: "#2563eb",
   specialSummon: "#16a34a",
   ritualSummon: "#9333ea",
@@ -16,6 +17,7 @@ const actionColors: Record<string, string> = {
   negate: "#7c2d12",
   linkSummon: "#4f46e5",
   xyzSummon: "#be185d",
+  setCard: "#475569",
   enable: "#64748b",
 };
 

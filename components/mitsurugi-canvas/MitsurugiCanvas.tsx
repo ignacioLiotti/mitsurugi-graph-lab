@@ -17,7 +17,7 @@ import { fetchYgoCardInfo, getCardImageUrl, getLookupName, YgoCardInfo } from ".
 import { cards } from "./cards";
 import { cardName, editableZones, useGameStateStore } from "./gameStateStore";
 import { buildGraph, GraphMode, isActionAvailable } from "./graphEngine";
-import { nodeTypes } from "./nodes";
+import { edgeTypes, nodeTypes } from "./nodes";
 import {
   actionTargets,
   applyPlaygroundAction,
@@ -69,13 +69,33 @@ const timelineZones: { key: ConcreteZone; label: string }[] = [
   { key: "banished", label: "Banish" },
 ];
 
+const snapshotEditorZones: { key: ConcreteZone; label: string }[] = [
+  { key: "hand", label: "Hand" },
+  { key: "field", label: "Field" },
+  { key: "graveyard", label: "GY" },
+  { key: "banished", label: "Banish" },
+  { key: "deck", label: "Deck" },
+  { key: "extraDeck", label: "Extra" },
+];
+
+type SnapshotInspector =
+  | { type: "card"; cardId: string }
+  | { type: "zone"; zone: ConcreteZone };
+
+type FocusMovement = {
+  id: string;
+  cardId: string;
+  from: ConcreteZone;
+  to: ConcreteZone;
+};
+
 export default function MitsurugiCanvas() {
   const [appMode, setAppMode] = useState<"map" | "playground">("map");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>("habakiri");
   const [mode, setMode] = useState<GraphMode>("expanded");
-  const [playgroundCanvasView, setPlaygroundCanvasView] = useState<"timeline" | "decisions">("timeline");
+  const [playgroundCanvasView, setPlaygroundCanvasView] = useState<"timeline" | "focus" | "decisions">("timeline");
   const [includeConditions, setIncludeConditions] = useState(true);
   const [query, setQuery] = useState("");
   const [selectedCardInfo, setSelectedCardInfo] = useState<YgoCardInfo | null>(null);
@@ -93,6 +113,10 @@ export default function MitsurugiCanvas() {
   const [activeSnapshotIndex, setActiveSnapshotIndex] = useState(0);
   const [playgroundTargets, setPlaygroundTargets] = useState<Record<string, string>>({});
   const [selectedPlaygroundCardId, setSelectedPlaygroundCardId] = useState<string | null>(null);
+  const [snapshotInspector, setSnapshotInspector] = useState<SnapshotInspector | null>(null);
+  const [cardToAddToSnapshot, setCardToAddToSnapshot] = useState("");
+  const [focusMovements, setFocusMovements] = useState<FocusMovement[]>([]);
+  const [focusAnimationKey, setFocusAnimationKey] = useState(0);
   const [importedPlaygrounds, setImportedPlaygrounds] = useState<PlaygroundScenario[]>([]);
   const [activePlaygroundId, setActivePlaygroundId] = useState<string>("custom");
   const [playgroundImportStatus, setPlaygroundImportStatus] = useState("");
@@ -121,7 +145,16 @@ export default function MitsurugiCanvas() {
   const graph = useMemo(() => {
     if (appMode === "playground") {
       if (playgroundCanvasView === "timeline") {
-        return buildPlaygroundTimelineGraph(cards, fieldSnapshots, activeSnapshotIndex, setSelectedPlaygroundCardId);
+        return buildPlaygroundTimelineGraph(
+          cards,
+          fieldSnapshots,
+          activeSnapshotIndex,
+          (cardId) => {
+            setSelectedPlaygroundCardId(cardId);
+            setSnapshotInspector({ type: "card", cardId });
+          },
+          (zone) => setSnapshotInspector({ type: "zone", zone }),
+        );
       }
 
       return buildPlaygroundGraph(cards, playgroundHand, playgroundSteps);
@@ -148,6 +181,56 @@ export default function MitsurugiCanvas() {
     setNodes(graph.nodes);
     setEdges(graph.edges);
   }, [graph, setNodes, setEdges]);
+
+  useEffect(() => {
+    function isConcreteZone(value: string | null): value is ConcreteZone {
+      return snapshotEditorZones.some((zone) => zone.key === value);
+    }
+
+    function handleSnapshotNativeEvent(event: Event) {
+      const target = event.target instanceof Element ? event.target : null;
+      const cardButton = target?.closest<HTMLElement>("[data-card-id]");
+      const zoneButton = target?.closest<HTMLElement>("[data-zone]");
+
+      if (cardButton?.dataset.cardId) {
+        setSelectedPlaygroundCardId(cardButton.dataset.cardId);
+        setSnapshotInspector({ type: "card", cardId: cardButton.dataset.cardId });
+        return;
+      }
+
+      const zone = zoneButton?.dataset.zone ?? null;
+      if (isConcreteZone(zone)) {
+        setSnapshotInspector({ type: "zone", zone });
+      }
+    }
+
+    function handleSnapshotCard(event: Event) {
+      const detail = (event as CustomEvent<{ cardId?: string }>).detail;
+      if (!detail?.cardId) return;
+      setSelectedPlaygroundCardId(detail.cardId);
+      setSnapshotInspector({ type: "card", cardId: detail.cardId });
+    }
+
+    function handleSnapshotZone(event: Event) {
+      const detail = (event as CustomEvent<{ zone?: ConcreteZone }>).detail;
+      if (!detail?.zone) return;
+      setSnapshotInspector({ type: "zone", zone: detail.zone });
+    }
+
+    document.addEventListener("pointerdown", handleSnapshotNativeEvent, true);
+    document.addEventListener("mousedown", handleSnapshotNativeEvent, true);
+    document.addEventListener("click", handleSnapshotNativeEvent, true);
+    window.addEventListener("mitsurugi:snapshot-card", handleSnapshotCard);
+    window.addEventListener("mitsurugi:snapshot-zone", handleSnapshotZone);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleSnapshotNativeEvent, true);
+      document.removeEventListener("mousedown", handleSnapshotNativeEvent, true);
+      document.removeEventListener("click", handleSnapshotNativeEvent, true);
+      window.removeEventListener("mitsurugi:snapshot-card", handleSnapshotCard);
+      window.removeEventListener("mitsurugi:snapshot-zone", handleSnapshotZone);
+    };
+  }, []);
 
   const selectedCard = cards.find((card) => card.id === selectedCardId);
 
@@ -208,6 +291,14 @@ export default function MitsurugiCanvas() {
   );
 
   const activeSnapshot = fieldSnapshots[Math.min(activeSnapshotIndex, fieldSnapshots.length - 1)];
+  const inspectedCard =
+    snapshotInspector?.type === "card" ? cards.find((card) => card.id === snapshotInspector.cardId) : undefined;
+  const inspectedZoneCards =
+    activeSnapshot && snapshotInspector?.type === "zone"
+      ? activeSnapshot.state[snapshotInspector.zone]
+          .map((cardId) => cards.find((card) => card.id === cardId))
+          .filter((card): card is (typeof cards)[number] => Boolean(card))
+      : [];
 
   function makeInitialSnapshot(state: GameState): PlaygroundSnapshot {
     return {
@@ -226,11 +317,17 @@ export default function MitsurugiCanvas() {
       const action = sourceCard?.actions.find((item) => item.id === step.actionId);
       if (!sourceCard || !action) return;
 
-      rollingState = applyPlaygroundAction(rollingState, sourceCard, action, step.targetCardId);
+      rollingState = applyPlaygroundAction(rollingState, sourceCard, action, step.targetCardId, step.materials);
       snapshots.push({
         id: `snapshot-${index + 1}-${step.id}`,
         label: step.label,
+        description: step.description,
+        effectName: step.effectName,
+        effectNumber: step.effectNumber,
+        materials: step.materials,
         state: rollingState,
+        sourceCardId: step.sourceCardId,
+        targetCardId: step.targetCardId,
       });
     });
 
@@ -247,6 +344,7 @@ export default function MitsurugiCanvas() {
     setActiveSnapshotIndex(0);
     setPlaygroundTargets({});
     setSelectedPlaygroundCardId(null);
+    setSnapshotInspector(null);
     setActivePlaygroundId("custom");
   }
 
@@ -275,6 +373,7 @@ export default function MitsurugiCanvas() {
     setActiveSnapshotIndex(snapshots.length - 1);
     setPlaygroundTargets({});
     setSelectedPlaygroundCardId(null);
+    setSnapshotInspector(null);
     setActivePlaygroundId(scenario.id);
     setPlaygroundImportStatus(`Cargado: ${scenario.name}`);
   }
@@ -366,6 +465,7 @@ export default function MitsurugiCanvas() {
       actionId: action.id,
       targetCardId: targetId,
       label: targetCard ? `${action.label} -> ${targetCard.name}` : action.label,
+      description: action.note,
     };
 
     setPlaygroundState(nextState);
@@ -375,11 +475,119 @@ export default function MitsurugiCanvas() {
       {
         id: `snapshot-${current.length}-${stepId}`,
         label: nextStep.label,
+        description: nextStep.description,
         state: nextState,
+        sourceCardId: nextStep.sourceCardId,
+        targetCardId: nextStep.targetCardId,
       },
     ]);
     setActiveSnapshotIndex(fieldSnapshots.length);
     setActivePlaygroundId("custom");
+  }
+
+  function removeCardFromSnapshotState(state: GameState, cardId: string): GameState {
+    return {
+      ...state,
+      hand: state.hand.filter((id) => id !== cardId),
+      field: state.field.filter((id) => id !== cardId),
+      graveyard: state.graveyard.filter((id) => id !== cardId),
+      banished: state.banished.filter((id) => id !== cardId),
+      deck: state.deck.filter((id) => id !== cardId),
+      extraDeck: state.extraDeck.filter((id) => id !== cardId),
+    };
+  }
+
+  function trimTimelineWithEditedState(nextState: GameState, label = "Edited state") {
+    const baseSnapshots = fieldSnapshots.slice(0, activeSnapshotIndex + 1);
+    const currentSnapshot = baseSnapshots[activeSnapshotIndex] ?? makeInitialSnapshot(nextState);
+    const nextSnapshots = [
+      ...baseSnapshots.slice(0, activeSnapshotIndex),
+      {
+        ...currentSnapshot,
+        label,
+        state: nextState,
+      },
+    ];
+
+    setFieldSnapshots(nextSnapshots);
+    setPlaygroundSteps((current) => current.slice(0, Math.max(activeSnapshotIndex, 0)));
+    setPlaygroundState(nextState);
+    setActiveSnapshotIndex(nextSnapshots.length - 1);
+    setActivePlaygroundId("custom");
+  }
+
+  function moveCardInActiveSnapshot(cardId: string, zone: ConcreteZone) {
+    if (!activeSnapshot) return;
+
+    const withoutCard = removeCardFromSnapshotState(activeSnapshot.state, cardId);
+    const nextState = {
+      ...withoutCard,
+      [zone]: [...withoutCard[zone], cardId],
+    };
+
+    trimTimelineWithEditedState(nextState, `${activeSnapshot.label} (edited)`);
+  }
+
+  function removeCardFromActiveSnapshot(cardId: string) {
+    if (!activeSnapshot) return;
+    trimTimelineWithEditedState(removeCardFromSnapshotState(activeSnapshot.state, cardId), `${activeSnapshot.label} (edited)`);
+  }
+
+  function addCardToActiveSnapshot(zone: ConcreteZone) {
+    if (!activeSnapshot || !cardToAddToSnapshot) return;
+    moveCardInActiveSnapshot(cardToAddToSnapshot, zone);
+    setCardToAddToSnapshot("");
+  }
+
+  function cardZoneInState(state: GameState, cardId: string): ConcreteZone | null {
+    return snapshotEditorZones.find((zone) => state[zone.key].includes(cardId))?.key ?? null;
+  }
+
+  function snapshotMovements(from: PlaygroundSnapshot | undefined, to: PlaygroundSnapshot | undefined) {
+    if (!from || !to) return [];
+
+    const allCardIds = new Set([
+      ...from.state.hand,
+      ...from.state.field,
+      ...from.state.graveyard,
+      ...from.state.banished,
+      ...from.state.deck,
+      ...from.state.extraDeck,
+      ...to.state.hand,
+      ...to.state.field,
+      ...to.state.graveyard,
+      ...to.state.banished,
+      ...to.state.deck,
+      ...to.state.extraDeck,
+    ]);
+
+    return Array.from(allCardIds).flatMap((cardId) => {
+      const fromZone = cardZoneInState(from.state, cardId);
+      const toZone = cardZoneInState(to.state, cardId);
+
+      if (!fromZone || !toZone || fromZone === toZone) return [];
+      return [
+        {
+          id: `${cardId}-${from.id}-${to.id}`,
+          cardId,
+          from: fromZone,
+          to: toZone,
+        },
+      ];
+    });
+  }
+
+  function goToSnapshot(index: number) {
+    const nextIndex = Math.max(0, Math.min(fieldSnapshots.length - 1, index));
+    const movements = snapshotMovements(fieldSnapshots[activeSnapshotIndex], fieldSnapshots[nextIndex]);
+
+    setFocusMovements(movements);
+    setFocusAnimationKey((value) => value + 1);
+    setActiveSnapshotIndex(nextIndex);
+
+    window.setTimeout(() => {
+      setFocusMovements([]);
+    }, 1400);
   }
 
   function handleNodeClick(_: React.MouseEvent, node: Node) {
@@ -387,12 +595,13 @@ export default function MitsurugiCanvas() {
 
     const snapshotIndex = typeof node.data?.snapshotIndex === "number" ? node.data.snapshotIndex : null;
     if (snapshotIndex !== null) {
-      setActiveSnapshotIndex(snapshotIndex);
+      goToSnapshot(snapshotIndex);
       return;
     }
 
     const cardId = typeof node.data?.cardId === "string" ? node.data.cardId : null;
     setSelectedPlaygroundCardId(cardId);
+    if (cardId) setSnapshotInspector({ type: "card", cardId });
   }
 
   function renderMiniCard(cardId: string, mode: "image" | "chip" = "image") {
@@ -464,6 +673,116 @@ export default function MitsurugiCanvas() {
     );
   }
 
+  function renderFocusCard(cardId: string, highlighted = false) {
+    const card = cards.find((item) => item.id === cardId);
+    if (!card) return null;
+
+    return (
+      <button
+        key={card.id}
+        className={highlighted ? "focus-card-button focus-card-highlight" : "focus-card-button"}
+        onClick={() => {
+          setSelectedPlaygroundCardId(card.id);
+          setSnapshotInspector({ type: "card", cardId: card.id });
+        }}
+        title={card.name}
+      >
+        <img src={getCardImageUrl(card)} alt={card.name} />
+      </button>
+    );
+  }
+
+  function renderFocusStack(snapshot: PlaygroundSnapshot, zone: ConcreteZone, label: string, highlighted = false) {
+    return (
+      <button
+        className={highlighted ? "focus-stack focus-stack-highlight" : "focus-stack"}
+        onClick={() => setSnapshotInspector({ type: "zone", zone })}
+      >
+        <div className="snapshot-card-back" />
+        <strong>{label}</strong>
+        <span>{snapshot.state[zone].length}</span>
+      </button>
+    );
+  }
+
+  function renderFocusSnapshot(snapshot: PlaygroundSnapshot) {
+    const fieldCards = snapshot.state.field.slice(0, 10);
+    const highlightedCardIds = new Set(focusMovements.map((movement) => movement.cardId));
+    const highlightedZones = new Set(focusMovements.flatMap((movement) => [movement.from, movement.to]));
+
+    return (
+      <div className="focus-board-shell">
+        <div className="focus-board-header">
+          <div>
+            <strong>T{activeSnapshotIndex}</strong>
+            <span>{snapshot.label}</span>
+          </div>
+          {(snapshot.effectName || snapshot.description) && (
+            <p>
+              {snapshot.effectName
+                ? `${typeof snapshot.effectNumber === "number" ? `E${snapshot.effectNumber}: ` : ""}${snapshot.effectName}`
+                : ""}
+              {snapshot.description ? ` ${snapshot.description}` : ""}
+            </p>
+          )}
+        </div>
+
+        <div className="focus-board-main">
+          <div className="focus-side-stacks">
+            {renderFocusStack(snapshot, "extraDeck", "Extra", highlightedZones.has("extraDeck"))}
+            {renderFocusStack(snapshot, "field", "Field", highlightedZones.has("field"))}
+          </div>
+
+          <div className="focus-field-zone">
+            <span>Field</span>
+            <div className="focus-field-slots">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <div key={index} className="focus-field-slot">
+                  {fieldCards[index] ? (
+                    renderFocusCard(fieldCards[index], highlightedCardIds.has(fieldCards[index]))
+                  ) : (
+                    <span className={highlightedZones.has("field") ? "snapshot-empty-slot snapshot-slot-highlight" : "snapshot-empty-slot"} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="focus-side-stacks">
+            {renderFocusStack(snapshot, "deck", "Deck", highlightedZones.has("deck"))}
+            {renderFocusStack(snapshot, "graveyard", "GY", highlightedZones.has("graveyard"))}
+            {renderFocusStack(snapshot, "banished", "Banish", highlightedZones.has("banished"))}
+          </div>
+        </div>
+
+        <div className="focus-hand-zone">
+          <span>Hand {snapshot.state.hand.length}</span>
+          <div>{snapshot.state.hand.map((cardId) => renderFocusCard(cardId, highlightedCardIds.has(cardId)))}</div>
+        </div>
+
+        <div className="focus-movement-layer" key={focusAnimationKey}>
+          {focusMovements.map((movement) => {
+            const card = cards.find((item) => item.id === movement.cardId);
+            if (!card) return null;
+
+            return (
+              <div
+                key={movement.id}
+                className={`focus-moving-card move-from-${movement.from} move-to-${movement.to}`}
+                title={`${card.name}: ${movement.from} -> ${movement.to}`}
+              >
+                <img src={getCardImageUrl(card)} alt={card.name} />
+                <span>
+                  {movement.from} → {movement.to}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main
       className={`app-shell ${leftCollapsed ? "left-collapsed" : ""} ${
@@ -528,12 +847,18 @@ export default function MitsurugiCanvas() {
           ) : (
             <>
               <div className="field-label">Canvas</div>
-              <div className="segmented">
+              <div className="segmented segmented-three">
                 <button
                   className={playgroundCanvasView === "timeline" ? "active" : ""}
                   onClick={() => setPlaygroundCanvasView("timeline")}
                 >
                   Timeline
+                </button>
+                <button
+                  className={playgroundCanvasView === "focus" ? "active" : ""}
+                  onClick={() => setPlaygroundCanvasView("focus")}
+                >
+                  Focus
                 </button>
                 <button
                   className={playgroundCanvasView === "decisions" ? "active" : ""}
@@ -610,22 +935,52 @@ export default function MitsurugiCanvas() {
           ))}
         </div>
 
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={handleNodeClick}
-          onPaneClick={() => {
-            if (appMode === "playground") setSelectedPlaygroundCardId(null);
-          }}
-          fitView
-        >
-          <Background />
-          <Controls />
-          <MiniMap pannable zoomable />
-        </ReactFlow>
+        {appMode === "playground" && playgroundCanvasView === "focus" && activeSnapshot ? (
+          <div className="focus-timeline-view">
+            <button
+              className="focus-nav-button"
+              disabled={activeSnapshotIndex === 0}
+              onClick={() => goToSnapshot(activeSnapshotIndex - 1)}
+            >
+              Previous
+            </button>
+            {renderFocusSnapshot(activeSnapshot)}
+            <button
+              className="focus-nav-button"
+              disabled={activeSnapshotIndex >= fieldSnapshots.length - 1}
+              onClick={() => goToSnapshot(activeSnapshotIndex + 1)}
+            >
+              Next
+            </button>
+          </div>
+        ) : (
+          <ReactFlow
+            key={`${appMode}-${playgroundCanvasView}`}
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={handleNodeClick}
+            onPaneClick={() => {
+              if (appMode === "playground") setSelectedPlaygroundCardId(null);
+            }}
+            defaultViewport={{
+              x: appMode === "playground" && playgroundCanvasView === "timeline" ? -116 : 0,
+              y: appMode === "playground" && playgroundCanvasView === "timeline" ? 88 : 0,
+              zoom: appMode === "playground" && playgroundCanvasView === "timeline" ? 0.72 : 1,
+            }}
+            fitView={!(appMode === "playground" && playgroundCanvasView === "timeline")}
+            fitViewOptions={{
+              padding: appMode === "playground" && playgroundCanvasView === "timeline" ? 1.1 : 0.2,
+            }}
+          >
+            <Background />
+            <Controls />
+            <MiniMap pannable zoomable />
+          </ReactFlow>
+        )}
       </section>
 
       <aside className="state-panel" id="state-panel">
@@ -744,7 +1099,7 @@ export default function MitsurugiCanvas() {
                         <button
                           key={snapshot.id}
                           className={index === activeSnapshotIndex ? "snapshot-card active" : "snapshot-card"}
-                          onClick={() => setActiveSnapshotIndex(index)}
+                          onClick={() => goToSnapshot(index)}
                         >
                           <span>T{index}</span>
                           {renderSnapshotBoard(snapshot, true)}
@@ -755,6 +1110,80 @@ export default function MitsurugiCanvas() {
                 ) : (
                   <p className="empty-copy">No hay snapshots todavia.</p>
                 )}
+              </div>
+
+              <div className="playground-section">
+                <div className="field-label">Snapshot inspector</div>
+                <div className="snapshot-inspector">
+                  {snapshotInspector?.type === "card" && inspectedCard ? (
+                    <div className="snapshot-card-detail">
+                      <img src={getCardImageUrl(inspectedCard)} alt={inspectedCard.name} />
+                      <div>
+                        <strong>{inspectedCard.name}</strong>
+                        <span>{inspectedCard.cardType}</span>
+                        <p>{inspectedCard.summary}</p>
+                      </div>
+                    </div>
+                  ) : snapshotInspector?.type === "zone" ? (
+                    <div className="snapshot-zone-detail">
+                      <strong>{zoneLabels[snapshotInspector.zone]}</strong>
+                      <span>{inspectedZoneCards.length} cards in selected snapshot</span>
+                      <div className="snapshot-zone-preview-grid">
+                        {inspectedZoneCards.map((card) => (
+                          <button
+                            key={card.id}
+                            onClick={() => {
+                              setSelectedPlaygroundCardId(card.id);
+                              setSnapshotInspector({ type: "card", cardId: card.id });
+                            }}
+                          >
+                            <img src={getCardImageUrl(card)} alt={card.name} />
+                            <span>{card.name.replace("Ame no ", "").replace(" no Mitsurugi", "")}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="empty-copy">Click a board, card, or stack in the canvas.</p>
+                  )}
+
+                  {activeSnapshot ? (
+                    <div className="snapshot-editor">
+                      <div className="field-label">Edit active snapshot</div>
+                      {snapshotInspector?.type === "card" && inspectedCard ? (
+                        <>
+                          <div className="snapshot-move-grid">
+                            {snapshotEditorZones.map((zone) => (
+                              <button key={zone.key} onClick={() => moveCardInActiveSnapshot(inspectedCard.id, zone.key)}>
+                                Move to {zone.label}
+                              </button>
+                            ))}
+                          </div>
+                          <button className="snapshot-remove-button" onClick={() => removeCardFromActiveSnapshot(inspectedCard.id)}>
+                            Remove from snapshot
+                          </button>
+                        </>
+                      ) : null}
+
+                      {snapshotInspector?.type === "zone" ? (
+                        <div className="snapshot-add-row">
+                          <select
+                            value={cardToAddToSnapshot}
+                            onChange={(event) => setCardToAddToSnapshot(event.target.value)}
+                          >
+                            <option value="">Add card...</option>
+                            {cards.map((card) => (
+                              <option key={card.id} value={card.id}>
+                                {card.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button onClick={() => addCardToActiveSnapshot(snapshotInspector.zone)}>Add</button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               <div className="playground-section">
@@ -813,7 +1242,10 @@ export default function MitsurugiCanvas() {
                 {playgroundSteps.length ? (
                   <ol className="playground-log">
                     {playgroundSteps.map((step) => (
-                      <li key={step.id}>{step.label}</li>
+                      <li key={step.id}>
+                        <strong>{step.label}</strong>
+                        {step.description ? <p>{step.description}</p> : null}
+                      </li>
                     ))}
                   </ol>
                 ) : (
