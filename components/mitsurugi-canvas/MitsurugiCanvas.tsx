@@ -785,7 +785,7 @@ export default function MitsurugiCanvas() {
 
   return (
     <main
-      className={`app-shell ${leftCollapsed ? "left-collapsed" : ""} ${
+      className={`app-shell app-mode-${appMode} canvas-${playgroundCanvasView} ${leftCollapsed ? "left-collapsed" : ""} ${
         rightCollapsed ? "right-collapsed" : ""
       }`}
     >
@@ -793,6 +793,12 @@ export default function MitsurugiCanvas() {
         <a href="#cards-panel">Cartas</a>
         <a href="#graph-panel">Grafo</a>
         <a href="#state-panel">Estado</a>
+        <button type="button" onClick={() => setLeftCollapsed((value) => !value)}>
+          {leftCollapsed ? "Abrir cartas" : "Cerrar cartas"}
+        </button>
+        <button type="button" onClick={() => setRightCollapsed((value) => !value)}>
+          {rightCollapsed ? "Abrir estado" : "Cerrar estado"}
+        </button>
       </nav>
 
       <aside className="sidebar" id="cards-panel">

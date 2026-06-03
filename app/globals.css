@@ -2475,3 +2475,301 @@ button {
     max-height: 150px;
   }
 }
+
+@media (max-width: 900px) {
+  .app-shell {
+    min-height: 100dvh;
+  }
+
+  .mobile-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .mobile-nav a,
+  .mobile-nav button {
+    display: grid;
+    min-height: 40px;
+    place-items: center;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    background: #111827;
+    color: #e2e8f0;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 900;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .mobile-nav button {
+    grid-column: span 1;
+  }
+
+  .sidebar,
+  .state-panel {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .left-collapsed .sidebar,
+  .right-collapsed .state-panel {
+    min-height: 50px;
+    max-height: 50px;
+    overflow: hidden;
+  }
+
+  .left-collapsed .sidebar-inner,
+  .right-collapsed .state-panel-inner {
+    display: none;
+  }
+
+  .collapse-tab {
+    position: sticky;
+    top: 58px;
+    z-index: 35;
+    justify-self: end;
+    margin: 8px 10px 0 auto;
+  }
+
+  .collapse-tab-left,
+  .collapse-tab-right,
+  .left-collapsed .collapse-tab-left,
+  .right-collapsed .collapse-tab-right {
+    left: auto;
+    right: auto;
+    top: 58px;
+    min-width: 118px;
+    transform: none;
+  }
+
+  .card-list {
+    max-height: min(44dvh, 420px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .playground-panel,
+  .zone-editor,
+  .legal-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .canvas-area {
+    height: calc(100dvh - 58px);
+    min-height: 500px;
+    overflow: hidden;
+    border-block: 1px solid #cbd5e1;
+  }
+
+  .app-mode-playground.canvas-focus .canvas-area {
+    height: calc(100dvh - 58px);
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .app-mode-playground.canvas-focus .node-legend {
+    display: none;
+  }
+
+  .app-mode-playground.canvas-focus .top-card {
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+  }
+
+  .app-mode-playground.canvas-focus .top-card strong {
+    font-size: 12px;
+  }
+
+  .app-mode-playground.canvas-focus .top-card p {
+    display: none;
+  }
+
+  .focus-timeline-view {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+    min-width: max(100%, 760px);
+    min-height: max(620px, calc(100dvh - 58px));
+    gap: 8px;
+    padding: 72px 10px 14px;
+  }
+
+  .focus-nav-button {
+    position: sticky;
+    top: 70px;
+    z-index: 15;
+    min-height: 44px;
+    border-color: #64748b;
+  }
+
+  .focus-board-shell {
+    grid-column: 1 / -1;
+    min-height: 520px;
+    overflow: visible;
+  }
+
+  .focus-board-header {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .focus-board-header div {
+    gap: 10px;
+  }
+
+  .focus-board-header strong {
+    font-size: 18px;
+  }
+
+  .focus-board-header span {
+    font-size: 12px;
+  }
+
+  .focus-board-header p {
+    max-height: 68px;
+    font-size: 11px;
+  }
+
+  .focus-board-main {
+    grid-template-columns: 86px minmax(420px, 1fr) 96px;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .focus-side-stacks {
+    gap: 8px;
+  }
+
+  .focus-stack {
+    min-height: 92px;
+    padding: 8px 6px;
+  }
+
+  .focus-field-zone {
+    padding: 10px;
+  }
+
+  .focus-field-slots {
+    gap: 7px;
+  }
+
+  .focus-field-slot {
+    min-height: 124px;
+  }
+
+  .focus-card-button {
+    width: 72px;
+  }
+
+  .focus-hand-zone {
+    padding: 10px;
+  }
+
+  .focus-hand-zone > div {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 6px;
+  }
+
+  .mobile-nav a,
+  .mobile-nav button {
+    min-height: 34px;
+    font-size: 11px;
+  }
+
+  .collapse-tab,
+  .collapse-tab-left,
+  .collapse-tab-right,
+  .left-collapsed .collapse-tab-left,
+  .right-collapsed .collapse-tab-right {
+    top: 44px;
+  }
+
+  .canvas-area,
+  .app-mode-playground.canvas-focus .canvas-area {
+    height: calc(100dvh - 46px);
+  }
+
+  .top-card {
+    max-width: min(420px, calc(100% - 16px));
+  }
+
+  .node-legend {
+    top: 64px;
+    max-width: min(420px, calc(100% - 16px));
+  }
+
+  .focus-timeline-view {
+    min-width: max(100%, 880px);
+    min-height: max(500px, calc(100dvh - 46px));
+    padding-top: 58px;
+  }
+
+  .focus-nav-button {
+    top: 56px;
+  }
+
+  .focus-board-shell {
+    min-height: 430px;
+  }
+
+  .focus-board-main {
+    grid-template-columns: 82px minmax(500px, 1fr) 92px;
+    padding: 8px;
+  }
+
+  .focus-field-slot {
+    min-height: 102px;
+  }
+
+  .focus-stack {
+    min-height: 76px;
+  }
+
+  .focus-hand-zone .focus-card-button {
+    width: 58px;
+  }
+}
+
+@media (max-width: 520px) {
+  .mobile-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-nav a:nth-child(2) {
+    grid-column: span 2;
+  }
+
+  .canvas-area {
+    height: calc(100dvh - 138px);
+  }
+
+  .app-mode-playground.canvas-focus .canvas-area {
+    height: calc(100dvh - 138px);
+  }
+
+  .focus-timeline-view {
+    padding-top: 64px;
+  }
+
+  .focus-nav-button {
+    top: 62px;
+  }
+}
