@@ -17,6 +17,13 @@ import { cards } from "./cards";
 import { cardName, editableZones, useGameStateStore } from "./gameStateStore";
 import { buildGraph, GraphMode, isActionAvailable } from "./graphEngine";
 import { nodeTypes } from "./nodes";
+import {
+  actionTargets,
+  applyPlaygroundAction,
+  buildPlaygroundGraph,
+  createInitialPlaygroundState,
+  PlaygroundStep,
+} from "./playgroundEngine";
 import { OpponentAction, Zone } from "./types";
 
 type ConcreteZone = Exclude<Zone, "any">;
@@ -45,12 +52,17 @@ const nodeLegend = [
 ];
 
 export default function MitsurugiCanvas() {
+  const [appMode, setAppMode] = useState<"map" | "playground">("map");
   const [selectedCardId, setSelectedCardId] = useState<string | null>("habakiri");
   const [mode, setMode] = useState<GraphMode>("expanded");
   const [includeConditions, setIncludeConditions] = useState(true);
   const [query, setQuery] = useState("");
   const [selectedCardInfo, setSelectedCardInfo] = useState<YgoCardInfo | null>(null);
   const [cardInfoStatus, setCardInfoStatus] = useState<"idle" | "loading" | "ready" | "missing">("idle");
+  const [playgroundHand, setPlaygroundHand] = useState<string[]>(["habakiri", "prayers"]);
+  const [playgroundState, setPlaygroundState] = useState(() => createInitialPlaygroundState(cards, ["habakiri", "prayers"]));
+  const [playgroundSteps, setPlaygroundSteps] = useState<PlaygroundStep[]>([]);
+  const [playgroundTargets, setPlaygroundTargets] = useState<Record<string, string>>({});
   const {
     gameState,
     toggleCardInZone,
@@ -73,8 +85,12 @@ export default function MitsurugiCanvas() {
   }, [query]);
 
   const graph = useMemo(() => {
+    if (appMode === "playground") {
+      return buildPlaygroundGraph(cards, playgroundHand, playgroundSteps);
+    }
+
     return buildGraph(cards, selectedCardId, mode, includeConditions, gameState);
-  }, [selectedCardId, mode, includeConditions, gameState]);
+  }, [appMode, selectedCardId, mode, includeConditions, gameState, playgroundHand, playgroundSteps]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
@@ -118,6 +134,57 @@ export default function MitsurugiCanvas() {
     );
   }, [gameState]);
 
+  const playgroundLegalActions = useMemo(() => {
+    return cards.flatMap((card) =>
+      card.actions
+        .filter((action) => isActionAvailable(cards, playgroundState, card, action))
+        .map((action) => ({
+          card,
+          action,
+          targets: actionTargets(cards, playgroundState, action),
+        })),
+    );
+  }, [playgroundState]);
+
+  function resetPlayground(nextHand = playgroundHand) {
+    setPlaygroundHand(nextHand);
+    setPlaygroundState(createInitialPlaygroundState(cards, nextHand));
+    setPlaygroundSteps([]);
+    setPlaygroundTargets({});
+  }
+
+  function togglePlaygroundHand(cardId: string) {
+    const nextHand = playgroundHand.includes(cardId)
+      ? playgroundHand.filter((id) => id !== cardId)
+      : [...playgroundHand, cardId];
+
+    resetPlayground(nextHand);
+  }
+
+  function takePlaygroundAction(cardId: string, actionId: string, fallbackTargetId?: string) {
+    const card = cards.find((item) => item.id === cardId);
+    const action = card?.actions.find((item) => item.id === actionId);
+
+    if (!card || !action) return;
+
+    const decisionKey = `${card.id}-${action.id}`;
+    const targetId = playgroundTargets[decisionKey] ?? fallbackTargetId;
+    const targetCard = targetId ? cards.find((item) => item.id === targetId) : undefined;
+    const stepId = `${playgroundSteps.length + 1}-${decisionKey}`;
+
+    setPlaygroundState((current) => applyPlaygroundAction(current, card, action, targetId));
+    setPlaygroundSteps((current) => [
+      ...current,
+      {
+        id: stepId,
+        sourceCardId: card.id,
+        actionId: action.id,
+        targetCardId: targetId,
+        label: targetCard ? `${action.label} -> ${targetCard.name}` : action.label,
+      },
+    ]);
+  }
+
   return (
     <main className="app-shell">
       <nav className="mobile-nav" aria-label="Navegacion mobile">
@@ -136,6 +203,18 @@ export default function MitsurugiCanvas() {
         </div>
 
         <div className="control-panel">
+          <div className="field-label">Vista</div>
+          <div className="segmented">
+            <button className={appMode === "map" ? "active" : ""} onClick={() => setAppMode("map")}>
+              Mapa
+            </button>
+            <button className={appMode === "playground" ? "active" : ""} onClick={() => setAppMode("playground")}>
+              Playground
+            </button>
+          </div>
+
+          {appMode === "map" ? (
+            <>
           <div className="field-label">Modo</div>
           <div className="segmented">
             <button className={mode === "expanded" ? "active" : ""} onClick={() => setMode("expanded")}>
@@ -158,6 +237,12 @@ export default function MitsurugiCanvas() {
           <button className="secondary-button" onClick={() => setSelectedCardId(null)}>
             Ver todas las cartas
           </button>
+            </>
+          ) : (
+            <button className="secondary-button" onClick={() => resetPlayground()}>
+              Reiniciar simulación
+            </button>
+          )}
         </div>
 
         <div className="search-panel">
@@ -189,12 +274,24 @@ export default function MitsurugiCanvas() {
       <section className="canvas-area" id="graph-panel">
         <div className="top-card">
           <div>
-            <strong>{selectedCard ? selectedCard.name : "Todas las cartas"}</strong>
-            <p>{selectedCard ? selectedCard.summary : "Vista completa del motor de dependencias."}</p>
+            <strong>
+              {appMode === "playground"
+                ? "Playground de partida"
+                : selectedCard
+                  ? selectedCard.name
+                  : "Todas las cartas"}
+            </strong>
+            <p>
+              {appMode === "playground"
+                ? "Tomá decisiones legales y construí una línea paso a paso."
+                : selectedCard
+                  ? selectedCard.summary
+                  : "Vista completa del motor de dependencias."}
+            </p>
           </div>
           <div className="legal-counter">
             <Swords size={16} />
-            {legalActions.length} legales
+            {appMode === "playground" ? playgroundLegalActions.length : legalActions.length} legales
           </div>
         </div>
 
@@ -222,6 +319,103 @@ export default function MitsurugiCanvas() {
       </section>
 
       <aside className="state-panel" id="state-panel">
+        {appMode === "playground" ? (
+          <>
+            <div className="playground-panel">
+              <div className="state-header compact-state-header">
+                <div>
+                  <h2>Playground</h2>
+                  <p>Elegí mano inicial y ejecutá acciones legales.</p>
+                </div>
+                <button className="icon-button" onClick={() => resetPlayground()} title="Reset">
+                  <RotateCcw size={16} />
+                </button>
+              </div>
+
+              <div className="playground-section">
+                <div className="field-label">Mano inicial</div>
+                <div className="zone-grid playground-hand-grid">
+                  {cards
+                    .filter((card) => card.kind !== "extra")
+                    .map((card) => (
+                      <button
+                        key={card.id}
+                        className={playgroundHand.includes(card.id) ? "zone-pill selected" : "zone-pill"}
+                        onClick={() => togglePlaygroundHand(card.id)}
+                      >
+                        {card.name.replace("Ame no ", "").replace(" no Mitsurugi", "")}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              <div className="playground-section">
+                <div className="field-label">Estado actual</div>
+                <div className="playground-zones">
+                  <span>Hand {playgroundState.hand.length}</span>
+                  <span>Field {playgroundState.field.length}</span>
+                  <span>GY {playgroundState.graveyard.length}</span>
+                  <span>Deck {playgroundState.deck.length}</span>
+                </div>
+              </div>
+
+              <div className="playground-section">
+                <div className="field-label">Decisiones legales</div>
+                <div className="playground-actions">
+                  {playgroundLegalActions.length ? (
+                    playgroundLegalActions.map(({ card, action, targets }) => {
+                      const decisionKey = `${card.id}-${action.id}`;
+                      const selectedTargetId = playgroundTargets[decisionKey] ?? targets[0]?.id;
+
+                      return (
+                        <div key={decisionKey} className="playground-action">
+                          <strong>{card.name}</strong>
+                          <span>{action.label}</span>
+                          {targets.length ? (
+                            <select
+                              value={selectedTargetId ?? ""}
+                              onChange={(event) =>
+                                setPlaygroundTargets((current) => ({
+                                  ...current,
+                                  [decisionKey]: event.target.value,
+                                }))
+                              }
+                            >
+                              {targets.map((target) => (
+                                <option key={target.id} value={target.id}>
+                                  {target.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : null}
+                          <button onClick={() => takePlaygroundAction(card.id, action.id, selectedTargetId)}>
+                            Ejecutar
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="empty-copy">No hay decisiones legales con este estado.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="playground-section">
+                <div className="field-label">Línea tomada</div>
+                {playgroundSteps.length ? (
+                  <ol className="playground-log">
+                    {playgroundSteps.map((step) => (
+                      <li key={step.id}>{step.label}</li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="empty-copy">Todavía no ejecutaste ninguna decisión.</p>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
         <div className="card-preview-panel">
           <div className="field-label">Carta seleccionada</div>
           {selectedCard ? (
@@ -358,6 +552,8 @@ export default function MitsurugiCanvas() {
             <p className="empty-copy">No hay acciones legales con este estado.</p>
           )}
         </div>
+          </>
+        )}
       </aside>
     </main>
   );
