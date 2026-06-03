@@ -82,3 +82,21 @@ export type GameState = {
   opponentAction: OpponentAction;
   ritualSummoned: string[];
 };
+
+export type PlaygroundScenarioStep = {
+  sourceCardId: string;
+  actionId: string;
+  targetCardId?: string;
+  label?: string;
+};
+
+export type PlaygroundScenario = {
+  schemaVersion: 1;
+  id: string;
+  name: string;
+  description?: string;
+  tags?: string[];
+  initialHand: string[];
+  gameState?: Partial<GameState>;
+  steps?: PlaygroundScenarioStep[];
+};

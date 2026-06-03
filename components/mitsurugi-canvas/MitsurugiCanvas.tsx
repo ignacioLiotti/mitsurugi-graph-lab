@@ -11,7 +11,7 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { ExternalLink, RotateCcw, Search, Swords, Waypoints } from "lucide-react";
+import { Download, ExternalLink, Library, RotateCcw, Search, Swords, Upload, Waypoints } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { fetchYgoCardInfo, getLookupName, YgoCardInfo } from "./cardApi";
 import { cards } from "./cards";
@@ -25,7 +25,15 @@ import {
   createInitialPlaygroundState,
   PlaygroundStep,
 } from "./playgroundEngine";
-import { OpponentAction, Zone } from "./types";
+import {
+  builtInPlaygrounds,
+  currentPlaygroundToScenario,
+  parsePlaygroundScenario,
+  scenarioInitialHand,
+  scenarioToGameState,
+  scenarioToSteps,
+} from "./playgroundScenarios";
+import { OpponentAction, PlaygroundScenario, Zone } from "./types";
 
 type ConcreteZone = Exclude<Zone, "any">;
 
@@ -67,6 +75,9 @@ export default function MitsurugiCanvas() {
   const [playgroundSteps, setPlaygroundSteps] = useState<PlaygroundStep[]>([]);
   const [playgroundTargets, setPlaygroundTargets] = useState<Record<string, string>>({});
   const [selectedPlaygroundCardId, setSelectedPlaygroundCardId] = useState<string | null>(null);
+  const [importedPlaygrounds, setImportedPlaygrounds] = useState<PlaygroundScenario[]>([]);
+  const [activePlaygroundId, setActivePlaygroundId] = useState<string>("custom");
+  const [playgroundImportStatus, setPlaygroundImportStatus] = useState("");
   const {
     gameState,
     toggleCardInZone,
@@ -157,12 +168,18 @@ export default function MitsurugiCanvas() {
     ? cards.find((card) => card.id === selectedPlaygroundCardId)
     : undefined;
 
+  const playgroundLibrary = useMemo(
+    () => [...builtInPlaygrounds, ...importedPlaygrounds],
+    [importedPlaygrounds],
+  );
+
   function resetPlayground(nextHand = playgroundHand) {
     setPlaygroundHand(nextHand);
     setPlaygroundState(createInitialPlaygroundState(cards, nextHand));
     setPlaygroundSteps([]);
     setPlaygroundTargets({});
     setSelectedPlaygroundCardId(null);
+    setActivePlaygroundId("custom");
   }
 
   function togglePlaygroundHand(cardId: string) {
@@ -171,6 +188,67 @@ export default function MitsurugiCanvas() {
       : [...playgroundHand, cardId];
 
     resetPlayground(nextHand);
+  }
+
+  function loadPlaygroundScenario(scenario: PlaygroundScenario) {
+    const nextHand = scenarioInitialHand(cards, scenario);
+
+    setPlaygroundHand(nextHand);
+    setPlaygroundState(scenarioToGameState(cards, scenario));
+    setPlaygroundSteps(scenarioToSteps(cards, scenario));
+    setPlaygroundTargets({});
+    setSelectedPlaygroundCardId(null);
+    setActivePlaygroundId(scenario.id);
+    setPlaygroundImportStatus(`Cargado: ${scenario.name}`);
+  }
+
+  function handlePlaygroundLibraryChange(scenarioId: string) {
+    if (scenarioId === "custom") {
+      setActivePlaygroundId("custom");
+      return;
+    }
+
+    const scenario = playgroundLibrary.find((item) => item.id === scenarioId);
+    if (scenario) loadPlaygroundScenario(scenario);
+  }
+
+  async function importPlaygroundJson(file: File | null) {
+    if (!file) return;
+
+    try {
+      const parsed = parsePlaygroundScenario(JSON.parse(await file.text()));
+
+      if (!parsed.ok) {
+        setPlaygroundImportStatus(parsed.error);
+        return;
+      }
+
+      setImportedPlaygrounds((current) => [
+        ...current.filter((item) => item.id !== parsed.scenario.id),
+        parsed.scenario,
+      ]);
+      loadPlaygroundScenario(parsed.scenario);
+    } catch {
+      setPlaygroundImportStatus("No pude leer ese JSON.");
+    }
+  }
+
+  function exportCurrentPlayground() {
+    const scenario = currentPlaygroundToScenario(
+      `export-${Date.now()}`,
+      "Playground export",
+      playgroundHand,
+      playgroundState,
+      playgroundSteps,
+    );
+    const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "mitsurugi-playground.json";
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   function takePlaygroundAction(cardId: string, actionId: string, fallbackTargetId?: string) {
@@ -195,6 +273,7 @@ export default function MitsurugiCanvas() {
         label: targetCard ? `${action.label} -> ${targetCard.name}` : action.label,
       },
     ]);
+    setActivePlaygroundId("custom");
   }
 
   function handleNodeClick(_: React.MouseEvent, node: Node) {
@@ -366,6 +445,47 @@ export default function MitsurugiCanvas() {
                 <button className="icon-button" onClick={() => resetPlayground()} title="Reset">
                   <RotateCcw size={16} />
                 </button>
+              </div>
+
+              <div className="playground-section">
+                <div className="field-label">Biblioteca</div>
+                <div className="scenario-tools">
+                  <div className="scenario-select-row">
+                    <Library size={15} />
+                    <select
+                      value={activePlaygroundId}
+                      onChange={(event) => handlePlaygroundLibraryChange(event.target.value)}
+                    >
+                      <option value="custom">Playground actual</option>
+                      {playgroundLibrary.map((scenario) => (
+                        <option key={scenario.id} value={scenario.id}>
+                          {scenario.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="scenario-actions-row">
+                    <label className="scenario-file-button">
+                      <Upload size={14} />
+                      Importar JSON
+                      <input
+                        type="file"
+                        accept="application/json,.json"
+                        onChange={(event) => importPlaygroundJson(event.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                    <button className="scenario-file-button" onClick={exportCurrentPlayground}>
+                      <Download size={14} />
+                      Exportar
+                    </button>
+                  </div>
+
+                  <p>
+                    {playgroundImportStatus ||
+                      "Formato: schemaVersion, id, name, initialHand, gameState y steps opcionales."}
+                  </p>
+                </div>
               </div>
 
               <div className="playground-section">

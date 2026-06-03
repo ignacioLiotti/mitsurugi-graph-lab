@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "starter-habakiri-prayers",
+  "name": "Habakiri + Prayers",
+  "description": "Mano inicial simple para explorar la linea de Habakiri revelando y trayendo un Mitsurugi desde deck.",
+  "tags": ["starter", "ritual", "basic"],
+  "initialHand": ["habakiri", "prayers"],
+  "gameState": {
+    "hand": ["habakiri", "prayers"],
+    "field": [],
+    "graveyard": [],
+    "banished": [],
+    "deck": [
+      "saji",
+      "aramasa",
+      "kusanagi",
+      "murakumo",
+      "futsu",
+      "ritual",
+      "mirror",
+      "magatama",
+      "purification",
+      "night-sword-serpent",
+      "manju",
+      "pre-prep"
+    ],
+    "extraDeck": ["dyna-mondo", "ip", "sp"],
+    "opponentAction": "none",
+    "ritualSummoned": []
+  },
+  "steps": []
+}
