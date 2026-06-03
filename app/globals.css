@@ -1814,13 +1814,21 @@ button {
   inset: 0;
   z-index: 8;
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) 92px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 16px;
-  align-items: center;
+  align-items: stretch;
   background:
     radial-gradient(circle at 20% 0%, rgba(139, 92, 246, 0.16), transparent 30%),
     #e2e8f0;
   padding: 128px 22px 28px;
+}
+
+.focus-nav-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 92px));
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .focus-nav-button {
@@ -2513,6 +2521,11 @@ button {
     overflow: visible;
   }
 
+  .app-mode-playground.canvas-focus .state-panel {
+    border-top: 1px solid #1e293b;
+    box-shadow: none;
+  }
+
   .left-collapsed .sidebar,
   .right-collapsed .state-panel {
     min-height: 50px;
@@ -2569,6 +2582,7 @@ button {
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
+    background: #e2e8f0;
   }
 
   .app-mode-playground.canvas-focus .node-legend {
@@ -2595,25 +2609,37 @@ button {
   .focus-timeline-view {
     position: static;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
     align-items: stretch;
-    min-width: max(100%, 760px);
+    min-width: 100%;
     min-height: max(620px, calc(100dvh - 58px));
     gap: 8px;
-    padding: 72px 10px 14px;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 68px 10px 96px;
+  }
+
+  .focus-nav-bar {
+    position: sticky;
+    left: 10px;
+    top: 68px;
+    z-index: 18;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(100%, calc(100vw - 20px));
+    gap: 8px;
   }
 
   .focus-nav-button {
-    position: sticky;
-    top: 70px;
-    z-index: 15;
     min-height: 44px;
     border-color: #64748b;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
   }
 
   .focus-board-shell {
-    grid-column: 1 / -1;
+    width: 760px;
+    max-width: none;
     min-height: 520px;
     overflow: visible;
   }
@@ -2717,16 +2743,22 @@ button {
   }
 
   .focus-timeline-view {
-    min-width: max(100%, 880px);
+    min-width: 100%;
     min-height: max(500px, calc(100dvh - 46px));
-    padding-top: 58px;
+    padding: 56px 8px 72px;
+  }
+
+  .focus-nav-bar {
+    top: 54px;
+    width: min(100%, calc(100vw - 16px));
   }
 
   .focus-nav-button {
-    top: 56px;
+    min-height: 38px;
   }
 
   .focus-board-shell {
+    width: 880px;
     min-height: 430px;
   }
 
@@ -2766,10 +2798,29 @@ button {
   }
 
   .focus-timeline-view {
-    padding-top: 64px;
+    min-height: max(560px, calc(100dvh - 138px));
+    padding: 58px 8px 96px;
+  }
+
+  .focus-nav-bar {
+    left: 8px;
+    top: 56px;
+    width: min(100%, calc(100vw - 16px));
   }
 
   .focus-nav-button {
-    top: 62px;
+    min-height: 40px;
+  }
+
+  .focus-board-shell {
+    width: 720px;
+  }
+
+  .focus-board-main {
+    grid-template-columns: 78px minmax(390px, 1fr) 88px;
+  }
+
+  .focus-field-slot {
+    min-height: 116px;
   }
 }

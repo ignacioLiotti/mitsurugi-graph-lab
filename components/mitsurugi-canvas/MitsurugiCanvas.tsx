@@ -943,21 +943,23 @@ export default function MitsurugiCanvas() {
 
         {appMode === "playground" && playgroundCanvasView === "focus" && activeSnapshot ? (
           <div className="focus-timeline-view">
-            <button
-              className="focus-nav-button"
-              disabled={activeSnapshotIndex === 0}
-              onClick={() => goToSnapshot(activeSnapshotIndex - 1)}
-            >
-              Previous
-            </button>
+            <div className="focus-nav-bar">
+              <button
+                className="focus-nav-button"
+                disabled={activeSnapshotIndex === 0}
+                onClick={() => goToSnapshot(activeSnapshotIndex - 1)}
+              >
+                Previous
+              </button>
+              <button
+                className="focus-nav-button"
+                disabled={activeSnapshotIndex >= fieldSnapshots.length - 1}
+                onClick={() => goToSnapshot(activeSnapshotIndex + 1)}
+              >
+                Next
+              </button>
+            </div>
             {renderFocusSnapshot(activeSnapshot)}
-            <button
-              className="focus-nav-button"
-              disabled={activeSnapshotIndex >= fieldSnapshots.length - 1}
-              onClick={() => goToSnapshot(activeSnapshotIndex + 1)}
-            >
-              Next
-            </button>
           </div>
         ) : (
           <ReactFlow
