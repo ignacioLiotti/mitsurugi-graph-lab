@@ -13,7 +13,7 @@ import {
 } from "@xyflow/react";
 import { Download, ExternalLink, Library, RotateCcw, Search, Swords, Upload, Waypoints } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { fetchYgoCardInfo, getLookupName, YgoCardInfo } from "./cardApi";
+import { fetchYgoCardInfo, getCardImageUrl, getLookupName, YgoCardInfo } from "./cardApi";
 import { cards } from "./cards";
 import { cardName, editableZones, useGameStateStore } from "./gameStateStore";
 import { buildGraph, GraphMode, isActionAvailable } from "./graphEngine";
@@ -33,7 +33,7 @@ import {
   scenarioToGameState,
   scenarioToSteps,
 } from "./playgroundScenarios";
-import { OpponentAction, PlaygroundScenario, Zone } from "./types";
+import { GameState, OpponentAction, PlaygroundScenario, Zone } from "./types";
 
 type ConcreteZone = Exclude<Zone, "any">;
 
@@ -60,6 +60,19 @@ const nodeLegend = [
   { label: "Target", className: "legend-wildcard" },
 ];
 
+type FieldSnapshot = {
+  id: string;
+  label: string;
+  state: GameState;
+};
+
+const timelineZones: { key: ConcreteZone; label: string }[] = [
+  { key: "hand", label: "Hand" },
+  { key: "field", label: "Field" },
+  { key: "graveyard", label: "GY" },
+  { key: "banished", label: "Banish" },
+];
+
 export default function MitsurugiCanvas() {
   const [appMode, setAppMode] = useState<"map" | "playground">("map");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -73,6 +86,14 @@ export default function MitsurugiCanvas() {
   const [playgroundHand, setPlaygroundHand] = useState<string[]>(["habakiri", "prayers"]);
   const [playgroundState, setPlaygroundState] = useState(() => createInitialPlaygroundState(cards, ["habakiri", "prayers"]));
   const [playgroundSteps, setPlaygroundSteps] = useState<PlaygroundStep[]>([]);
+  const [fieldSnapshots, setFieldSnapshots] = useState<FieldSnapshot[]>(() => [
+    {
+      id: "snapshot-0",
+      label: "Initial hand",
+      state: createInitialPlaygroundState(cards, ["habakiri", "prayers"]),
+    },
+  ]);
+  const [activeSnapshotIndex, setActiveSnapshotIndex] = useState(0);
   const [playgroundTargets, setPlaygroundTargets] = useState<Record<string, string>>({});
   const [selectedPlaygroundCardId, setSelectedPlaygroundCardId] = useState<string | null>(null);
   const [importedPlaygrounds, setImportedPlaygrounds] = useState<PlaygroundScenario[]>([]);
@@ -174,10 +195,44 @@ export default function MitsurugiCanvas() {
     [importedPlaygrounds],
   );
 
+  const activeSnapshot = fieldSnapshots[Math.min(activeSnapshotIndex, fieldSnapshots.length - 1)];
+
+  function makeInitialSnapshot(state: GameState): FieldSnapshot {
+    return {
+      id: "snapshot-0",
+      label: "Initial hand",
+      state,
+    };
+  }
+
+  function buildSnapshotsFromSteps(initialState: GameState, steps: PlaygroundStep[]) {
+    let rollingState = initialState;
+    const snapshots: FieldSnapshot[] = [makeInitialSnapshot(initialState)];
+
+    steps.forEach((step, index) => {
+      const sourceCard = cards.find((card) => card.id === step.sourceCardId);
+      const action = sourceCard?.actions.find((item) => item.id === step.actionId);
+      if (!sourceCard || !action) return;
+
+      rollingState = applyPlaygroundAction(rollingState, sourceCard, action, step.targetCardId);
+      snapshots.push({
+        id: `snapshot-${index + 1}-${step.id}`,
+        label: step.label,
+        state: rollingState,
+      });
+    });
+
+    return snapshots;
+  }
+
   function resetPlayground(nextHand = playgroundHand) {
+    const nextState = createInitialPlaygroundState(cards, nextHand);
+
     setPlaygroundHand(nextHand);
-    setPlaygroundState(createInitialPlaygroundState(cards, nextHand));
+    setPlaygroundState(nextState);
     setPlaygroundSteps([]);
+    setFieldSnapshots([makeInitialSnapshot(nextState)]);
+    setActiveSnapshotIndex(0);
     setPlaygroundTargets({});
     setSelectedPlaygroundCardId(null);
     setActivePlaygroundId("custom");
@@ -193,10 +248,19 @@ export default function MitsurugiCanvas() {
 
   function loadPlaygroundScenario(scenario: PlaygroundScenario) {
     const nextHand = scenarioInitialHand(cards, scenario);
+    const nextSteps = scenarioToSteps(cards, scenario);
+    const explicitState = scenarioToGameState(cards, scenario);
+    const initialState = scenario.gameState ? explicitState : createInitialPlaygroundState(cards, nextHand);
+    const snapshots = nextSteps.length
+      ? buildSnapshotsFromSteps(initialState, nextSteps)
+      : [makeInitialSnapshot(explicitState)];
+    const finalState = snapshots[snapshots.length - 1]?.state ?? explicitState;
 
     setPlaygroundHand(nextHand);
-    setPlaygroundState(scenarioToGameState(cards, scenario));
-    setPlaygroundSteps(scenarioToSteps(cards, scenario));
+    setPlaygroundState(finalState);
+    setPlaygroundSteps(nextSteps);
+    setFieldSnapshots(snapshots);
+    setActiveSnapshotIndex(snapshots.length - 1);
     setPlaygroundTargets({});
     setSelectedPlaygroundCardId(null);
     setActivePlaygroundId(scenario.id);
@@ -283,18 +347,26 @@ export default function MitsurugiCanvas() {
     const targetId = playgroundTargets[decisionKey] ?? fallbackTargetId;
     const targetCard = targetId ? cards.find((item) => item.id === targetId) : undefined;
     const stepId = `${playgroundSteps.length + 1}-${decisionKey}`;
+    const nextState = applyPlaygroundAction(playgroundState, card, action, targetId);
+    const nextStep = {
+      id: stepId,
+      sourceCardId: card.id,
+      actionId: action.id,
+      targetCardId: targetId,
+      label: targetCard ? `${action.label} -> ${targetCard.name}` : action.label,
+    };
 
-    setPlaygroundState((current) => applyPlaygroundAction(current, card, action, targetId));
-    setPlaygroundSteps((current) => [
+    setPlaygroundState(nextState);
+    setPlaygroundSteps((current) => [...current, nextStep]);
+    setFieldSnapshots((current) => [
       ...current,
       {
-        id: stepId,
-        sourceCardId: card.id,
-        actionId: action.id,
-        targetCardId: targetId,
-        label: targetCard ? `${action.label} -> ${targetCard.name}` : action.label,
+        id: `snapshot-${current.length}-${stepId}`,
+        label: nextStep.label,
+        state: nextState,
       },
     ]);
+    setActiveSnapshotIndex(fieldSnapshots.length);
     setActivePlaygroundId("custom");
   }
 
@@ -303,6 +375,75 @@ export default function MitsurugiCanvas() {
 
     const cardId = typeof node.data?.cardId === "string" ? node.data.cardId : null;
     setSelectedPlaygroundCardId(cardId);
+  }
+
+  function renderMiniCard(cardId: string, mode: "image" | "chip" = "image") {
+    const card = cards.find((item) => item.id === cardId);
+    if (!card) return null;
+
+    if (mode === "chip") {
+      return (
+        <span key={cardId} className="field-chip" title={card.name}>
+          {card.name.replace("Ame no ", "").replace(" no Mitsurugi", "")}
+        </span>
+      );
+    }
+
+    return (
+      <img
+        key={cardId}
+        src={getCardImageUrl(card)}
+        alt={card.name}
+        title={card.name}
+        className="field-card-image"
+      />
+    );
+  }
+
+  function renderStack(label: string, count: number) {
+    return (
+      <div className="field-stack">
+        <div className="field-card-back" />
+        <strong>{label}</strong>
+        <span>{count}</span>
+      </div>
+    );
+  }
+
+  function renderSnapshotBoard(snapshot: FieldSnapshot, compact = false) {
+    const fieldCards = snapshot.state.field.slice(0, compact ? 3 : 5);
+
+    return (
+      <div className={compact ? "field-board compact-field-board" : "field-board"}>
+        <div className="field-board-top">
+          {renderStack("Deck", snapshot.state.deck.length)}
+          <div className="field-zone main-field-zone">
+            <span>Monster / Spell zones</span>
+            <div className="field-slots">
+              {Array.from({ length: compact ? 3 : 5 }).map((_, index) => (
+                <div key={index} className="field-slot">
+                  {fieldCards[index] ? renderMiniCard(fieldCards[index]) : <span className="empty-slot" />}
+                </div>
+              ))}
+            </div>
+          </div>
+          {renderStack("Extra", snapshot.state.extraDeck.length)}
+        </div>
+
+        <div className="field-board-bottom">
+          {timelineZones.map((zone) => (
+            <div key={zone.key} className="field-zone">
+              <span>
+                {zone.label} {snapshot.state[zone.key].length}
+              </span>
+              <div className="field-zone-cards">
+                {snapshot.state[zone.key].slice(0, compact ? 4 : 8).map((cardId) => renderMiniCard(cardId, "chip"))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -545,6 +686,39 @@ export default function MitsurugiCanvas() {
                   <span>GY {playgroundState.graveyard.length}</span>
                   <span>Deck {playgroundState.deck.length}</span>
                 </div>
+              </div>
+
+              <div className="playground-section">
+                <div className="field-label">Field timeline</div>
+                {activeSnapshot ? (
+                  <div className="field-timeline">
+                    <div className="field-timeline-header">
+                      <strong>
+                        T{activeSnapshotIndex}: {activeSnapshot.label}
+                      </strong>
+                      <span>
+                        {fieldSnapshots.length} state{fieldSnapshots.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+
+                    {renderSnapshotBoard(activeSnapshot)}
+
+                    <div className="snapshot-strip" aria-label="Field states over time">
+                      {fieldSnapshots.map((snapshot, index) => (
+                        <button
+                          key={snapshot.id}
+                          className={index === activeSnapshotIndex ? "snapshot-card active" : "snapshot-card"}
+                          onClick={() => setActiveSnapshotIndex(index)}
+                        >
+                          <span>T{index}</span>
+                          {renderSnapshotBoard(snapshot, true)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="empty-copy">No hay snapshots todavia.</p>
+                )}
               </div>
 
               <div className="playground-section">
