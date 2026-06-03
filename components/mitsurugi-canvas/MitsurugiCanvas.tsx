@@ -78,6 +78,7 @@ export default function MitsurugiCanvas() {
   const [importedPlaygrounds, setImportedPlaygrounds] = useState<PlaygroundScenario[]>([]);
   const [activePlaygroundId, setActivePlaygroundId] = useState<string>("custom");
   const [playgroundImportStatus, setPlaygroundImportStatus] = useState("");
+  const [pastedPlaygroundJson, setPastedPlaygroundJson] = useState("");
   const {
     gameState,
     toggleCardInZone,
@@ -212,24 +213,45 @@ export default function MitsurugiCanvas() {
     if (scenario) loadPlaygroundScenario(scenario);
   }
 
+  function loadParsedScenario(value: unknown, shouldClearText = false) {
+    const parsed = parsePlaygroundScenario(value);
+
+    if (!parsed.ok) {
+      setPlaygroundImportStatus(parsed.error);
+      return;
+    }
+
+    setImportedPlaygrounds((current) => [
+      ...current.filter((item) => item.id !== parsed.scenario.id),
+      parsed.scenario,
+    ]);
+    loadPlaygroundScenario(parsed.scenario);
+
+    if (shouldClearText) {
+      setPastedPlaygroundJson("");
+    }
+  }
+
   async function importPlaygroundJson(file: File | null) {
     if (!file) return;
 
     try {
-      const parsed = parsePlaygroundScenario(JSON.parse(await file.text()));
-
-      if (!parsed.ok) {
-        setPlaygroundImportStatus(parsed.error);
-        return;
-      }
-
-      setImportedPlaygrounds((current) => [
-        ...current.filter((item) => item.id !== parsed.scenario.id),
-        parsed.scenario,
-      ]);
-      loadPlaygroundScenario(parsed.scenario);
+      loadParsedScenario(JSON.parse(await file.text()));
     } catch {
       setPlaygroundImportStatus("No pude leer ese JSON.");
+    }
+  }
+
+  function importPlaygroundJsonText() {
+    if (!pastedPlaygroundJson.trim()) {
+      setPlaygroundImportStatus("Pegá un JSON antes de importarlo.");
+      return;
+    }
+
+    try {
+      loadParsedScenario(JSON.parse(pastedPlaygroundJson), true);
+    } catch {
+      setPlaygroundImportStatus("El texto pegado no es JSON válido.");
     }
   }
 
@@ -479,6 +501,16 @@ export default function MitsurugiCanvas() {
                       <Download size={14} />
                       Exportar
                     </button>
+                  </div>
+
+                  <div className="scenario-paste-box">
+                    <textarea
+                      value={pastedPlaygroundJson}
+                      onChange={(event) => setPastedPlaygroundJson(event.target.value)}
+                      placeholder='Pegá un escenario JSON: {"schemaVersion":1,"id":"..."}'
+                      spellCheck={false}
+                    />
+                    <button onClick={importPlaygroundJsonText}>Importar texto pegado</button>
                   </div>
 
                   <p>

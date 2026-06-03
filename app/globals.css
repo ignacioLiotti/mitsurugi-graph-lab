@@ -39,7 +39,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -708,6 +709,46 @@ button {
   display: none;
 }
 
+.scenario-paste-box {
+  display: grid;
+  gap: 8px;
+}
+
+.scenario-paste-box textarea {
+  width: 100%;
+  min-height: 108px;
+  resize: vertical;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  outline: 0;
+  background: #020617;
+  color: #e2e8f0;
+  padding: 10px;
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.scenario-paste-box textarea:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.scenario-paste-box textarea::placeholder {
+  color: #64748b;
+}
+
+.scenario-paste-box button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 7px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .scenario-tools p {
   margin: 0;
   color: #94a3b8;
@@ -1331,8 +1372,14 @@ button {
   }
 
   .scenario-select-row,
-  .scenario-file-button {
+  .scenario-file-button,
+  .scenario-paste-box button {
     min-height: 44px;
+  }
+
+  .scenario-paste-box textarea {
+    min-height: 132px;
+    font-size: 12px;
   }
 
   .playground-hand-grid {
